@@ -23,7 +23,7 @@ export const PostgresDataSource = new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   schema: process.env.DB_SCHEMA,
-  ssl: process.env.DB_SSL === "true",
+  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
   // Auto-create tables in development to avoid missing table errors
   synchronize: process.env.TYPEORM_SYNC === "true" || process.env.NODE_ENV !== "production",
   // Add connection timeout and retry settings
