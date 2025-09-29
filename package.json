@@ -1,7 +1,7 @@
 {
   "name": "wrascal-ts",
   "version": "1.0.0",
-  "description": "WRASCAL API - RENDER DEPLOYMENT FIX v2",
+  "description": "WRASCAL API - Scientific Database for Chemical Stability Constants",
   "scripts": {
     "build": "tsc --project tsconfig.compile.json",
     "build:full": "yarn run barrels && tsc --project tsconfig.compile.json",

@@ -27,9 +27,6 @@ export const PostgresDataSource = new DataSource({
   // Auto-create tables in development to avoid missing table errors
   synchronize: process.env.TYPEORM_SYNC === "true" || process.env.NODE_ENV !== "production",
   // Add connection timeout and retry settings
-  connectTimeoutMS: 30000,
-  acquireTimeoutMS: 30000,
-  timeout: 30000,
   extra: {
     connectionTimeoutMillis: 30000,
     idleTimeoutMillis: 30000,
