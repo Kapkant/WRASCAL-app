@@ -8,6 +8,7 @@
     "dev": "yarn run barrels && tsnd --inspect --exit-child --cls --ignore-watch node_modules --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
     "start": "NODE_ENV=production node dist/index.js",
     "start:prod": "NODE_ENV=production node dist/index.js",
+    "render:start": "NODE_ENV=production node dist/index.js",
     "test": "yarn run test:lint && yarn run test:coverage",
     "test:unit": "cross-env NODE_ENV=test jest",
     "test:coverage": "yarn run test:unit",
