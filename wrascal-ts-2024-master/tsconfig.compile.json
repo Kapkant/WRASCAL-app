@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "src/*": ["src/*"]
+    },
+    "outDir": "./dist",
+    "moduleResolution": "node",
+    "declaration": true,
+    "noResolve": false,
+    "preserveConstEnums": true,
+    "sourceMap": true,
+    "noEmit": false,
+    "emitDeclarationOnly": false,
+    "inlineSources": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true
+  }
+}
+
+
+
