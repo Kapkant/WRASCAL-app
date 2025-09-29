@@ -42,11 +42,21 @@ registerProvider<DataSource>({
   type: "typeorm:datasource",
   deps: [Logger],
   async useAsyncFactory(logger: Logger) {
-    await PostgresDataSource.initialize();
-
-    logger.info("Connected with typeorm to database: Postgres");
-
-    return PostgresDataSource;
+    try {
+      logger.info("Attempting to connect to database...");
+      logger.info("DB_HOST:", process.env.DB_HOST);
+      logger.info("DB_PORT:", process.env.DB_PORT);
+      logger.info("DB_NAME:", process.env.DB_NAME);
+      logger.info("DB_SSL:", process.env.DB_SSL);
+      
+      await PostgresDataSource.initialize();
+      logger.info("✅ Connected with typeorm to database: Postgres");
+      return PostgresDataSource;
+    } catch (error) {
+      logger.error("❌ Database connection failed:", error.message);
+      logger.error("Full error:", error);
+      throw error;
+    }
   },
   hooks: {
     $onDestroy(dataSource) {
