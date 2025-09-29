@@ -40,7 +40,7 @@ import * as pages from "./controllers/pages/index";
     })
   ],
   views: {
-    root: join(process.cwd(), "../views"),
+    root: join(process.cwd(), "views"),
     extensions: {
       ejs: "ejs"
     }
