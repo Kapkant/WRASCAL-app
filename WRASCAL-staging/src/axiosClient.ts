@@ -10,7 +10,11 @@ import { MolDataRawResultModel } from "@/models/MolDataResultModel";
 import { ReferenceFetchResultModel } from "@/models/ReferenceFetchResultModel";
 
 const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8081/rest"
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8081/rest",
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
 });
 
 export async function getMolData(
