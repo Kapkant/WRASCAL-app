@@ -1,7 +1,7 @@
 {
   "name": "wrascal-ts",
   "version": "1.0.0",
-  "description": "",
+  "description": "WRASCAL API for Render deployment",
   "scripts": {
     "build": "yarn run barrels && tsc --project tsconfig.compile.json",
     "barrels": "barrelsby --config .barrelsby.json",
