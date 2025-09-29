@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "WRASCAL API for Render deployment",
   "scripts": {
-    "build": "yarn run barrels && tsc --project tsconfig.compile.json",
+    "build": "tsc --project tsconfig.compile.json",
+    "build:full": "yarn run barrels && tsc --project tsconfig.compile.json",
     "barrels": "barrelsby --config .barrelsby.json",
     "dev": "yarn run barrels && tsnd --inspect --exit-child --cls --ignore-watch node_modules --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
     "start": "NODE_ENV=production node dist/index.js",
@@ -41,7 +42,6 @@
     "@tsed/swagger": "^7.13.3",
     "ajv": "^8.12.0",
     "axios": "^1.11.0",
-    "barrelsby": "^2.5.1",
     "body-parser": "^1.20.1",
     "compression": "^1.7.4",
     "tsconfig-paths": "^4.2.0",
@@ -56,6 +56,7 @@
     "npx": "^10.2.2",
     "pg": "^8.9.0",
     "typeorm": "^0.3.11",
+    "typescript": "^4.9.5",
     "yarn": "^1.22.19",
     "zlib": "^1.0.5"
   },
@@ -74,6 +75,7 @@
     "@types/supertest": "^2.0.12",
     "@typescript-eslint/eslint-plugin": "^5.49.0",
     "@typescript-eslint/parser": "^5.49.0",
+    "barrelsby": "^2.5.1",
     "eslint": "^8.33.0",
     "eslint-config-prettier": "^8.6.0",
     "eslint-plugin-prettier": "^4.2.1",
@@ -86,8 +88,7 @@
     "ts-jest": "^29.0.5",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
-    "tslib": "^2.5.0",
-    "typescript": "^4.9.5"
+    "tslib": "^2.5.0"
   },
   "tsed": {
     "packageManager": "yarn",
