@@ -3,7 +3,8 @@ services:
     name: wrascal-api
     env: docker
     plan: free
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: wrascal-ts-2024-master/Dockerfile
+    rootDir: wrascal-ts-2024-master
     envVars:
       - key: NODE_ENV
         value: production
