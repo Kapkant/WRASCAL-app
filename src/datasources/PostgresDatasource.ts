@@ -62,7 +62,9 @@ registerProvider<DataSource>({
       logger.error("Error message:", error.message);
       logger.error("Error code:", error.code);
       logger.error("Error stack:", error.stack);
-      throw error;
+      logger.warn("⚠️ App will start without database connection");
+      // Don't throw error - let app start without database
+      return null;
     }
   },
   hooks: {
