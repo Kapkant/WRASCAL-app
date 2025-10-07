@@ -36,7 +36,7 @@ export const PostgresDataSource = new DataSource({
   }
 });
 
-registerProvider<DataSource>({
+registerProvider<DataSource | null>({
   provide: POSTGRES_DATA_SOURCE,
   type: "typeorm:datasource",
   deps: [Logger],
@@ -69,7 +69,7 @@ registerProvider<DataSource>({
   },
   hooks: {
     $onDestroy(dataSource) {
-      return dataSource.isInitialized && dataSource.close();
+      return dataSource && dataSource.isInitialized && dataSource.close();
     }
   }
 });

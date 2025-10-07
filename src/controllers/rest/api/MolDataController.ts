@@ -12,11 +12,13 @@ import ArrayUtils from "../../../utils/ArrayUtils";
 @Controller("/mol")
 export class MolDataController {
   @Inject(POSTGRES_DATA_SOURCE)
-  protected dataSource: DataSource;
+  protected dataSource: DataSource | null;
 
   $onInit() {
-    if (this.dataSource.isInitialized) {
+    if (this.dataSource && this.dataSource.isInitialized) {
       console.log("POSTGREDB DATASOURCE INIT");
+    } else {
+      console.log("⚠️ Database not available - running in offline mode");
     }
   }
 
@@ -27,6 +29,10 @@ export class MolDataController {
   @Description("Fetch all the draw code using a given ligand ID, returns an array of result.")
   async getMolImage(@PathParams("ligandId") @Example(412) ligandId: number): Promise<MolDataRawResultModel> {
     if (ligandId <= 0) throw new BadRequest("Invalid Ligand Id.");
+
+    if (!this.dataSource) {
+      throw new BadRequest("Database not available - service is in offline mode");
+    }
 
     const result = await this.getDrawCodes([ligandId]);
 

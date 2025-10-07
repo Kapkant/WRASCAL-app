@@ -11,11 +11,13 @@ import { ReferenceFetchResultModel, ReferenceFetchResultSchema } from "../../../
 @Controller("/ref")
 export class ReferenceController {
   @Inject(POSTGRES_DATA_SOURCE)
-  protected dataSource: DataSource;
+  protected dataSource: DataSource | null;
 
   $onInit() {
-    if (this.dataSource.isInitialized) {
+    if (this.dataSource && this.dataSource.isInitialized) {
       console.log("POSTGREDB DATASOURCE INIT");
+    } else {
+      console.log("⚠️ Database not available - running in offline mode");
     }
   }
 
