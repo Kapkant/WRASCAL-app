@@ -23,9 +23,17 @@ export const PostgresDataSource = new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   schema: process.env.DB_SCHEMA,
-  ssl: process.env.DB_SSL === "true",
+  ssl: process.env.DB_SSL === "true" ? { 
+    rejectUnauthorized: false
+  } : false,
   // Auto-create tables in development to avoid missing table errors
-  synchronize: process.env.TYPEORM_SYNC === "true" || process.env.NODE_ENV !== "production"
+  synchronize: process.env.TYPEORM_SYNC === "true" || process.env.NODE_ENV !== "production",
+  // Add connection timeout and retry settings
+  extra: {
+    connectionTimeoutMillis: 30000,
+    idleTimeoutMillis: 30000,
+    max: 20
+  }
 });
 
 registerProvider<DataSource>({
@@ -33,11 +41,29 @@ registerProvider<DataSource>({
   type: "typeorm:datasource",
   deps: [Logger],
   async useAsyncFactory(logger: Logger) {
-    await PostgresDataSource.initialize();
-
-    logger.info("Connected with typeorm to database: Postgres");
-
-    return PostgresDataSource;
+    try {
+      logger.info("Attempting to connect to database...");
+      logger.info("DB_HOST:", process.env.DB_HOST);
+      logger.info("DB_PORT:", process.env.DB_PORT);
+      logger.info("DB_NAME:", process.env.DB_NAME);
+      logger.info("DB_SSL:", process.env.DB_SSL);
+      logger.info("DB_USERNAME:", process.env.DB_USERNAME);
+      
+      await PostgresDataSource.initialize();
+      logger.info("✅ Connected with typeorm to database: Postgres");
+      
+      // Test the connection
+      const result = await PostgresDataSource.query("SELECT NOW() as current_time");
+      logger.info("✅ Database query test successful:", result[0]);
+      
+      return PostgresDataSource;
+    } catch (error) {
+      logger.error("❌ Database connection failed:");
+      logger.error("Error message:", error.message);
+      logger.error("Error code:", error.code);
+      logger.error("Error stack:", error.stack);
+      throw error;
+    }
   },
   hooks: {
     $onDestroy(dataSource) {

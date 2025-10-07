@@ -16,7 +16,7 @@ import * as pages from "./controllers/pages/index";
 @Configuration({
   ...config,
   acceptMimes: ["application/json"],
-  httpPort: process.env.PORT || 8083,
+  httpPort: process.env.PORT || 8081,
   httpsPort: false, // CHANGE
   componentsScan: false,
   mount: {
@@ -40,7 +40,7 @@ import * as pages from "./controllers/pages/index";
     })
   ],
   views: {
-    root: join(process.cwd(), "../views"),
+    root: join(process.cwd(), "views"),
     extensions: {
       ejs: "ejs"
     }

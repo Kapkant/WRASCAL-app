@@ -1,10 +1,9 @@
 services:
   - type: web
     name: wrascal-api
-    env: node
+    env: docker
     plan: free
-    buildCommand: yarn build
-    startCommand: yarn start:prod
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: NODE_ENV
         value: production
@@ -14,6 +13,8 @@ services:
         value: true
       - key: TYPEORM_SYNC
         value: false
+      - key: DB_SCHEMA
+        value: public
     # Add your database environment variables here:
     # - key: DB_HOST
     #   value: your-db-host
