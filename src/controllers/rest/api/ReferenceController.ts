@@ -31,6 +31,10 @@ export class ReferenceController {
   async getReferences(@PathParams("ligandId") @Example(412) ligandId: number): Promise<ReferenceFetchResultModel[]> {
     if (ligandId <= 0) throw new BadRequest("Invalid Ligand Id.");
 
+    if (!this.dataSource) {
+      throw new BadRequest("Database not available - service is in offline mode");
+    }
+
     return await this.dataSource
       .getRepository(Literature)
       .createQueryBuilder()

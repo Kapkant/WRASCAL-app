@@ -57,6 +57,10 @@ export class MolDataController {
   }
 
   private async getDrawCodes(ids: number[]): Promise<MolDataRawResultModel[]> {
+    if (!this.dataSource) {
+      throw new BadRequest("Database not available - service is in offline mode");
+    }
+
     const queryResult = await this.dataSource
       .getRepository(MolData)
       .createQueryBuilder()

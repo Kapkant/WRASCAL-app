@@ -80,6 +80,10 @@ export class SearchController {
   ): Promise<LigandAdvanceSearchResultModel[]> {
     if (!searchReq) throw new BadRequest("Empty Post Body!");
 
+    if (!this.dataSource) {
+      throw new BadRequest("Database not available - service is in offline mode");
+    }
+
     const hasLigandsFilter = ArrayUtils.any(searchReq.ligands);
     const whereQuery = `name iLike '%${searchReq?.ligands?.join("%")}%'`;
     const limit = searchReq.limit ?? 300;
@@ -150,6 +154,10 @@ export class SearchController {
     @Example(ConstantRequestExample)
     constReq: ConstantRequestModel
   ): Promise<ConstantResultModel[]> {
+    if (!this.dataSource) {
+      throw new BadRequest("Database not available - service is in offline mode");
+    }
+
     const withQuery = this.dataSource
       .getRepository(Constant)
       .createQueryBuilder()
@@ -167,7 +175,7 @@ export class SearchController {
       .andWhere(`metal_id = ${constReq.metalId}`)
       .getQuery();
 
-    const resultRaw = await this.dataSource
+    const resultRaw = await this.dataSource!
       .createQueryBuilder()
       .addCommonTableExpression(withQuery, "table_ids")
       .distinct(true)
