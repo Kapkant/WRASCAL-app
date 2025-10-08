@@ -35,20 +35,21 @@ export const WriterDataSource = new DataSource({
   ssl: process.env.DB_SSL === "true"
 });
 
-registerProvider<DataSource>({
-  provide: WRITER_DATA_SOURCE,
-  type: "typeorm:datasource",
-  deps: [Logger],
-  async useAsyncFactory(logger: Logger) {
-    await WriterDataSource.initialize();
+// Temporarily disabled to avoid database connection conflicts
+// registerProvider<DataSource>({
+//   provide: WRITER_DATA_SOURCE,
+//   type: "typeorm:datasource",
+//   deps: [Logger],
+//   async useAsyncFactory(logger: Logger) {
+//     await WriterDataSource.initialize();
 
-    logger.info("beep boop connected to writer");
+//     logger.info("beep boop connected to writer");
 
-    return WRITER_DATA_SOURCE;
-  },
-  hooks: {
-    $onDestroy(dataSource) {
-      return dataSource.isInitialized && dataSource.close();
-    }
-  }
-});
+//     return WRITER_DATA_SOURCE;
+//   },
+//   hooks: {
+//     $onDestroy(dataSource) {
+//       return dataSource.isInitialized && dataSource.close();
+//     }
+//   }
+// });
