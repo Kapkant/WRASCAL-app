@@ -22,7 +22,7 @@ import * as pages from "./controllers/pages/index";
   componentsScan: false,
   mount: {
     "/rest": [...Object.values(rest)],
-    "/": [...Object.values(pages)]
+    "/api": [...Object.values(pages)]
   },
   swagger: [
     {
@@ -63,9 +63,9 @@ export class Server {
       res.sendFile(join(process.cwd(), "public", "index.html"));
     });
 
-    // Handle client-side routing - serve index.html for all routes that don't start with /rest or /doc
+    // Handle client-side routing - serve index.html for all routes that don't start with /rest, /doc, or /api
     this.app.get("*", (req: Request, res: Response, next: NextFunction) => {
-      if (req.path.startsWith("/rest") || req.path.startsWith("/doc")) {
+      if (req.path.startsWith("/rest") || req.path.startsWith("/doc") || req.path.startsWith("/api")) {
         return next();
       }
       res.sendFile(join(process.cwd(), "public", "index.html"));
