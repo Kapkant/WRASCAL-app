@@ -12,11 +12,13 @@ import ArrayUtils from "../../../utils/ArrayUtils";
 @Controller("/mol")
 export class MolDataController {
   @Inject(POSTGRES_DATA_SOURCE)
-  protected dataSource: DataSource;
+  protected dataSource: DataSource | null;
 
   $onInit() {
-    if (this.dataSource.isInitialized) {
-      console.log("POSTGREDB DATASOURCE INIT");
+    if (this.dataSource && this.dataSource.isInitialized) {
+      console.log("✅ MolDataController: POSTGRES DATASOURCE INIT");
+    } else {
+      console.log("⚠️ MolDataController: Database not available - running in offline mode");
     }
   }
 
@@ -51,6 +53,10 @@ export class MolDataController {
   }
 
   private async getDrawCodes(ids: number[]): Promise<MolDataRawResultModel[]> {
+    if (!this.dataSource || !this.dataSource.isInitialized) {
+      throw new Error("Database not available");
+    }
+    
     const queryResult = await this.dataSource
       .getRepository(MolData)
       .createQueryBuilder()

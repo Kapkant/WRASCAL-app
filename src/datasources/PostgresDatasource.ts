@@ -30,18 +30,29 @@ export const PostgresDataSource = new DataSource({
   synchronize: process.env.TYPEORM_SYNC === "true" || process.env.NODE_ENV !== "production",
   // Add connection timeout and retry settings
   extra: {
-    connectionTimeoutMillis: 30000,
-    idleTimeoutMillis: 30000,
-    max: 20
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 10000,
+    max: 5, // Reduce max connections to prevent overwhelming the database
+    acquireTimeoutMillis: 10000,
+    createTimeoutMillis: 10000
   }
 });
 
-registerProvider<DataSource>({
+registerProvider<DataSource | null>({
   provide: POSTGRES_DATA_SOURCE,
   type: "typeorm:datasource",
   deps: [Logger],
   async useAsyncFactory(logger: Logger) {
     try {
+      // Validate required environment variables
+      const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USERNAME', 'DB_PASSWORD'];
+      const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+      
+      if (missingVars.length > 0) {
+        logger.error("❌ Missing required environment variables:", missingVars);
+        return null;
+      }
+
       logger.info("Attempting to connect to database...");
       logger.info("DB_HOST:", process.env.DB_HOST);
       logger.info("DB_PORT:", process.env.DB_PORT);
@@ -49,11 +60,14 @@ registerProvider<DataSource>({
       logger.info("DB_SSL:", process.env.DB_SSL);
       logger.info("DB_USERNAME:", process.env.DB_USERNAME);
       
+      // Add a small delay to prevent rapid connection attempts
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       await PostgresDataSource.initialize();
       logger.info("✅ Connected with typeorm to database: Postgres");
       
-      // Test the connection
-      const result = await PostgresDataSource.query("SELECT NOW() as current_time");
+      // Test the connection with a simple query
+      const result = await PostgresDataSource.query("SELECT NOW() as current_time, current_user as db_user");
       logger.info("✅ Database query test successful:", result[0]);
       
       return PostgresDataSource;
@@ -61,13 +75,23 @@ registerProvider<DataSource>({
       logger.error("❌ Database connection failed:");
       logger.error("Error message:", error.message);
       logger.error("Error code:", error.code);
-      logger.error("Error stack:", error.stack);
-      throw error;
+      if (error.code === 'ENOTFOUND') {
+        logger.error("❌ DNS resolution failed - check DB_HOST");
+      } else if (error.code === 'ECONNREFUSED') {
+        logger.error("❌ Connection refused - check DB_HOST and DB_PORT");
+      } else if (error.code === '28P01') {
+        logger.error("❌ Authentication failed - check DB_USERNAME and DB_PASSWORD");
+      } else if (error.code === '3D000') {
+        logger.error("❌ Database does not exist - check DB_NAME");
+      }
+      logger.warn("⚠️ App will start without database connection");
+      // Don't throw error - let app start without database
+      return null;
     }
   },
   hooks: {
     $onDestroy(dataSource) {
-      return dataSource.isInitialized && dataSource.close();
+      return dataSource && dataSource.isInitialized && dataSource.close();
     }
   }
 });

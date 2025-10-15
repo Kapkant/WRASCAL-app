@@ -27,6 +27,11 @@ const routes = [
         name: "About Us",
         component: () => import("@/views/AboutUs.vue"),
       },
+      {
+        path: "molecular-test",
+        name: "Molecular Test",
+        component: () => import("@/views/MolecularTest.vue"),
+      },
       // NOTE: The following routes are for future development. uncomment when needed
 
        {

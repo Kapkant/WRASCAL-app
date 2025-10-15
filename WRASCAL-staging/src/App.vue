@@ -162,6 +162,11 @@ export default defineComponent({
         to: "/about-us",
         icon: "mdi-information",
       },
+      {
+        name: "Molecular Test",
+        to: "/molecular-test",
+        icon: "mdi-molecule",
+      },
     ],
     drawer: false,
     loginDialogVisible: false,

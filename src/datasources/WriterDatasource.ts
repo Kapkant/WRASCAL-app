@@ -32,23 +32,33 @@ export const WriterDataSource = new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   schema: process.env.DB_SCHEMA,
-  ssl: process.env.DB_SSL === "true"
+  ssl: process.env.DB_SSL === "true" ? { 
+    rejectUnauthorized: false
+  } : false
 });
 
-registerProvider<DataSource>({
+registerProvider<DataSource | null>({
   provide: WRITER_DATA_SOURCE,
   type: "typeorm:datasource",
   deps: [Logger],
   async useAsyncFactory(logger: Logger) {
-    await WriterDataSource.initialize();
-
-    logger.info("beep boop connected to writer");
-
-    return WRITER_DATA_SOURCE;
+    try {
+      // Use the same connection settings as PostgresDataSource
+      logger.info("Attempting to connect WriterDataSource to database...");
+      
+      await WriterDataSource.initialize();
+      logger.info("✅ WriterDataSource connected to database");
+      
+      return WriterDataSource;
+    } catch (error) {
+      logger.error("❌ WriterDataSource connection failed:", error.message);
+      logger.warn("⚠️ WriteController will not be available");
+      return null;
+    }
   },
   hooks: {
     $onDestroy(dataSource) {
-      return dataSource.isInitialized && dataSource.close();
+      return dataSource && dataSource.isInitialized && dataSource.close();
     }
   }
 });

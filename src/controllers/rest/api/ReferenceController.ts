@@ -11,11 +11,13 @@ import { ReferenceFetchResultModel, ReferenceFetchResultSchema } from "../../../
 @Controller("/ref")
 export class ReferenceController {
   @Inject(POSTGRES_DATA_SOURCE)
-  protected dataSource: DataSource;
+  protected dataSource: DataSource | null;
 
   $onInit() {
-    if (this.dataSource.isInitialized) {
-      console.log("POSTGREDB DATASOURCE INIT");
+    if (this.dataSource && this.dataSource.isInitialized) {
+      console.log("✅ ReferenceController: POSTGRES DATASOURCE INIT");
+    } else {
+      console.log("⚠️ ReferenceController: Database not available - running in offline mode");
     }
   }
 
@@ -27,6 +29,10 @@ export class ReferenceController {
   @Summary("Fetch all the references using a given ligand ID.")
   @Description("Fetch all the references using a given ligand ID, returns an array of result.")
   async getReferences(@PathParams("ligandId") @Example(412) ligandId: number): Promise<ReferenceFetchResultModel[]> {
+    if (!this.dataSource || !this.dataSource.isInitialized) {
+      throw new BadRequest("Database not available");
+    }
+    
     if (ligandId <= 0) throw new BadRequest("Invalid Ligand Id.");
 
     return await this.dataSource

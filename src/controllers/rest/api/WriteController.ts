@@ -83,13 +83,19 @@ export class WriteController {
     // protected dataSource: DataSource;
 
     $onInit() {
-        if (WriterDataSource.isInitialized) {
-            console.log("Writeable Data Source is Ready")
+        if (WriterDataSource && WriterDataSource.isInitialized) {
+            console.log("✅ Writeable Data Source is Ready")
+        } else {
+            console.log("⚠️ Writeable Data Source is not available")
         }
     }
 
     @Post("/db", cors())
     async write(@BodyParams() input: mod.writeRequest): Promise<String> {
+        // Check if WriterDataSource is available
+        if (!WriterDataSource || !WriterDataSource.isInitialized) {
+            throw new Error("WriteController is not available - database connection failed");
+        }
 
         console.log(input)
 
