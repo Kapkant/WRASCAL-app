@@ -25,11 +25,13 @@ import { ConstantResultModel, ConstantResultModelSchema, ConstantResultRawModel 
 @Controller("/db")
 export class SearchController {
   @Inject(POSTGRES_DATA_SOURCE)
-  protected dataSource: DataSource;
+  protected dataSource: DataSource | null;
 
   $onInit() {
-    if (this.dataSource.isInitialized) {
+    if (this.dataSource && this.dataSource.isInitialized) {
       console.log("POSTGREDB DATASOURCE INIT");
+    } else {
+      console.log("⚠️ Database not available - running in offline mode");
     }
   }
 
@@ -40,6 +42,10 @@ export class SearchController {
   @Description("Perform a search using ligand, returns an array of search result. Can have multiple ligand keywords at same time.")
   async searchByLigand(@BodyParams() @Example(["EDTA"]) ligands: string[]): Promise<LigandSearchResultModel[]> {
     if (ligands.length === 0) throw new BadRequest("POST Body is empty");
+
+    if (!this.dataSource) {
+      throw new BadRequest("Database not available - service is in offline mode");
+    }
 
     const ligandsStr = ligands.join("%");
 
@@ -73,6 +79,10 @@ export class SearchController {
     searchReq: AdvanceSearchRequestModel
   ): Promise<LigandAdvanceSearchResultModel[]> {
     if (!searchReq) throw new BadRequest("Empty Post Body!");
+
+    if (!this.dataSource) {
+      throw new BadRequest("Database not available - service is in offline mode");
+    }
 
     const hasLigandsFilter = ArrayUtils.any(searchReq.ligands);
     const whereQuery = `name iLike '%${searchReq?.ligands?.join("%")}%'`;
@@ -144,6 +154,10 @@ export class SearchController {
     @Example(ConstantRequestExample)
     constReq: ConstantRequestModel
   ): Promise<ConstantResultModel[]> {
+    if (!this.dataSource) {
+      throw new BadRequest("Database not available - service is in offline mode");
+    }
+
     const withQuery = this.dataSource
       .getRepository(Constant)
       .createQueryBuilder()
@@ -161,7 +175,7 @@ export class SearchController {
       .andWhere(`metal_id = ${constReq.metalId}`)
       .getQuery();
 
-    const resultRaw = await this.dataSource
+    const resultRaw = await this.dataSource!
       .createQueryBuilder()
       .addCommonTableExpression(withQuery, "table_ids")
       .distinct(true)
