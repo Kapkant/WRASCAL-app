@@ -30,11 +30,14 @@ export const PostgresDataSource = new DataSource({
   synchronize: process.env.TYPEORM_SYNC === "true" || process.env.NODE_ENV !== "production",
   // Add connection timeout and retry settings
   extra: {
-    connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 30000,
+    idleTimeoutMillis: 30000,
     max: 5, // Reduce max connections to prevent overwhelming the database
-    acquireTimeoutMillis: 10000,
-    createTimeoutMillis: 10000
+    acquireTimeoutMillis: 30000,
+    createTimeoutMillis: 30000,
+    // Add retry settings
+    retryDelayMillis: 2000,
+    retryAttempts: 3
   }
 });
 
@@ -60,10 +63,30 @@ registerProvider<DataSource | null>({
       logger.info("DB_SSL:", process.env.DB_SSL);
       logger.info("DB_USERNAME:", process.env.DB_USERNAME);
       
-      // Add a small delay to prevent rapid connection attempts
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add retry logic for database connection
+      let retryCount = 0;
+      const maxRetries = 3;
       
-      await PostgresDataSource.initialize();
+      while (retryCount < maxRetries) {
+        try {
+          logger.info(`Connection attempt ${retryCount + 1}/${maxRetries}`);
+          
+          // Add a delay between retries
+          if (retryCount > 0) {
+            await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
+          }
+          
+          await PostgresDataSource.initialize();
+          break; // Success, exit retry loop
+        } catch (error) {
+          retryCount++;
+          logger.warn(`Connection attempt ${retryCount} failed:`, error.message);
+          
+          if (retryCount >= maxRetries) {
+            throw error; // Re-throw the last error
+          }
+        }
+      }
       logger.info("✅ Connected with typeorm to database: Postgres");
       
       // Test the connection with a simple query

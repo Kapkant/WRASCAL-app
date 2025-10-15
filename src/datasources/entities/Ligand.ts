@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryColumn } from "typeorm";
-import { array, number, object, serializeEnum } from "@tsed/schema";
+import { array, number, object, string } from "@tsed/schema";
 
 export enum Element {
   H = "H",
@@ -123,8 +123,8 @@ export enum Element {
 }
 
 export const MolecularFormulaEntrySchema = object({
-  element: serializeEnum(Element),
-  const: number()
+  element: string(),
+  count: number()
 });
 
 export class MolecularFormulaEntry {
