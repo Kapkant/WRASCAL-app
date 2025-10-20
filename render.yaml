@@ -27,3 +27,6 @@ services:
         value: d5x7Xjm4cj4Ryfu7yBhqpL2bhKXqF1tK
       - key: DB_NAME
         value: wrascal_db
+      # Single DATABASE_URL for PostgreSQL connection
+      - key: DATABASE_URL
+        value: postgresql://wrascal_db_user:d5x7Xjm4cj4Ryfu7yBhqpL2bhKXqF1tK@dpg-coa67df79t8c73ed886g-9.oregon-postgres.render.com:5432/wrascal_db?sslmode=require
