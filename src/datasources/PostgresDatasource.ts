@@ -41,27 +41,38 @@ export const PostgresDataSource = new DataSource({
   }
 });
 
+// Singleton pattern to prevent multiple connection attempts
+let connectionPromise: Promise<DataSource | null> | null = null;
+
 registerProvider<DataSource | null>({
   provide: POSTGRES_DATA_SOURCE,
   type: "typeorm:datasource",
   deps: [Logger],
   async useAsyncFactory(logger: Logger) {
-    try {
-      // Validate required environment variables
-      const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USERNAME', 'DB_PASSWORD'];
-      const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-      
-      if (missingVars.length > 0) {
-        logger.error("❌ Missing required environment variables:", missingVars);
-        return null;
-      }
+    // Return existing connection promise if already attempting connection
+    if (connectionPromise) {
+      logger.info("🔄 Database connection already in progress, waiting for result...");
+      return connectionPromise;
+    }
 
-      logger.info("Attempting to connect to database...");
-      logger.info("DB_HOST:", process.env.DB_HOST);
-      logger.info("DB_PORT:", process.env.DB_PORT);
-      logger.info("DB_NAME:", process.env.DB_NAME);
-      logger.info("DB_SSL:", process.env.DB_SSL);
-      logger.info("DB_USERNAME:", process.env.DB_USERNAME);
+    // Create new connection promise
+    connectionPromise = (async () => {
+      try {
+        // Validate required environment variables
+        const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USERNAME', 'DB_PASSWORD'];
+        const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+        
+        if (missingVars.length > 0) {
+          logger.error("❌ Missing required environment variables:", missingVars);
+          return null;
+        }
+
+        logger.info("Attempting to connect to database...");
+        logger.info("DB_HOST:", process.env.DB_HOST);
+        logger.info("DB_PORT:", process.env.DB_PORT);
+        logger.info("DB_NAME:", process.env.DB_NAME);
+        logger.info("DB_SSL:", process.env.DB_SSL);
+        logger.info("DB_USERNAME:", process.env.DB_USERNAME);
       
       // Add retry logic for database connection
       let retryCount = 0;
@@ -107,10 +118,13 @@ registerProvider<DataSource | null>({
       } else if (error.code === '3D000') {
         logger.error("❌ Database does not exist - check DB_NAME");
       }
-      logger.warn("⚠️ App will start without database connection");
-      // Don't throw error - let app start without database
-      return null;
-    }
+        logger.warn("⚠️ App will start without database connection");
+        // Don't throw error - let app start without database
+        return null;
+      }
+    })();
+
+    return connectionPromise;
   },
   hooks: {
     $onDestroy(dataSource) {
