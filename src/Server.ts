@@ -58,6 +58,15 @@ export class Server {
   protected settings: Configuration;
 
   $onReady() {
+    // Health check endpoint for Render monitoring
+    this.app.get("/health", (req: Request, res: Response) => {
+      res.status(200).json({ 
+        status: "ok", 
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+      });
+    });
+
     // Serve the frontend for all non-API routes
     this.app.get("/", (req: Request, res: Response) => {
       res.sendFile(join(process.cwd(), "public", "index.html"));
@@ -65,7 +74,7 @@ export class Server {
 
     // Handle client-side routing - serve index.html for all routes that don't start with /rest, /doc, or /api
     this.app.get("*", (req: Request, res: Response, next: NextFunction) => {
-      if (req.path.startsWith("/rest") || req.path.startsWith("/doc") || req.path.startsWith("/api")) {
+      if (req.path.startsWith("/rest") || req.path.startsWith("/doc") || req.path.startsWith("/api") || req.path.startsWith("/health")) {
         return next();
       }
       res.sendFile(join(process.cwd(), "public", "index.html"));
