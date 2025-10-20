@@ -82,7 +82,7 @@ test/**/*.js.map
 .idea
 
 # Project
-/public
+# /public - We need this for frontend deployment
 /dist
 
 #env
