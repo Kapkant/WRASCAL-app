@@ -37,28 +37,29 @@ export const WriterDataSource = new DataSource({
   } : false
 });
 
-registerProvider<DataSource | null>({
-  provide: WRITER_DATA_SOURCE,
-  type: "typeorm:datasource",
-  deps: [Logger],
-  async useAsyncFactory(logger: Logger) {
-    try {
-      // Use the same connection settings as PostgresDataSource
-      logger.info("Attempting to connect WriterDataSource to database...");
-      
-      await WriterDataSource.initialize();
-      logger.info("✅ WriterDataSource connected to database");
-      
-      return WriterDataSource;
-    } catch (error) {
-      logger.error("❌ WriterDataSource connection failed:", error.message);
-      logger.warn("⚠️ WriteController will not be available");
-      return null;
-    }
-  },
-  hooks: {
-    $onDestroy(dataSource) {
-      return dataSource && dataSource.isInitialized && dataSource.close();
-    }
-  }
-});
+// DISABLED: WriterDataSource to prevent multiple database connections
+// registerProvider<DataSource | null>({
+//   provide: WRITER_DATA_SOURCE,
+//   type: "typeorm:datasource",
+//   deps: [Logger],
+//   async useAsyncFactory(logger: Logger) {
+//     try {
+//       // Use the same connection settings as PostgresDataSource
+//       logger.info("Attempting to connect WriterDataSource to database...");
+//       
+//       await WriterDataSource.initialize();
+//       logger.info("✅ WriterDataSource connected to database");
+//       
+//       return WriterDataSource;
+//     } catch (error) {
+//       logger.error("❌ WriterDataSource connection failed:", error.message);
+//       logger.warn("⚠️ WriteController will not be available");
+//       return null;
+//     }
+//   },
+//   hooks: {
+//     $onDestroy(dataSource) {
+//       return dataSource && dataSource.isInitialized && dataSource.close();
+//     }
+//   }
+// });
