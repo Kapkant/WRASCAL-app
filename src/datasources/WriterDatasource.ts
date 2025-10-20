@@ -14,28 +14,32 @@ import { LiteratureMapping_ug } from "./entities/LiteratureMapping";
 
 /* I am not sure why this exists. Why was PostgresDatasource.ts used, it does the same job */
 export const WRITER_DATA_SOURCE = Symbol.for("WriterDataSource");
-export const WriterDataSource = new DataSource({
-  type: "postgres",
-  entities: [
-    Conditions_ug,
-    Ligands_ug,
-    EquilibriumExpression_ug,
-    Constants_ug,
-    Uncertainties_ug,
-    Literature_ug,
-    FootNote_ug,
-    LiteratureMapping_ug
-  ],
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  schema: process.env.DB_SCHEMA,
-  ssl: process.env.DB_SSL === "true" ? { 
-    rejectUnauthorized: false
-  } : false
-});
+// DISABLED: WriterDataSource to prevent multiple database connections
+// export const WriterDataSource = new DataSource({
+//   type: "postgres",
+//   entities: [
+//     Conditions_ug,
+//     Ligands_ug,
+//     EquilibriumExpression_ug,
+//     Constants_ug,
+//     Uncertainties_ug,
+//     Literature_ug,
+//     FootNote_ug,
+//     LiteratureMapping_ug
+//   ],
+//   host: process.env.DB_HOST,
+//   port: Number(process.env.DB_PORT),
+//   username: process.env.DB_USERNAME,
+//   password: process.env.DB_PASSWORD,
+//   database: process.env.DB_NAME,
+//   schema: process.env.DB_SCHEMA,
+//   ssl: process.env.DB_SSL === "true" ? { 
+//     rejectUnauthorized: false
+//   } : false
+// });
+
+// Create a null object to prevent errors
+export const WriterDataSource: any = null;
 
 // DISABLED: WriterDataSource to prevent multiple database connections
 // registerProvider<DataSource | null>({

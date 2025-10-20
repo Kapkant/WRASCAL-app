@@ -83,7 +83,7 @@ export class WriteController {
     // protected dataSource: DataSource;
 
     $onInit() {
-        if (WriterDataSource && WriterDataSource.isInitialized) {
+        if (WriterDataSource) {
             console.log("✅ Writeable Data Source is Ready")
         } else {
             console.log("⚠️ Writeable Data Source is not available")
@@ -93,7 +93,7 @@ export class WriteController {
     @Post("/db", cors())
     async write(@BodyParams() input: mod.writeRequest): Promise<String> {
         // Check if WriterDataSource is available
-        if (!WriterDataSource || !WriterDataSource.isInitialized) {
+        if (!WriterDataSource) {
             throw new Error("WriteController is not available - database connection failed");
         }
 
@@ -182,7 +182,7 @@ export class WriteController {
         if (!literatures_id) {
             await this.writeDB('literatures_user_gen', input.literaturesInfo);
             literatures_id = await this.getId('literatures_user_gen', input.literaturesInfo);
-            await WriterDataSource
+            await WriterDataSource!
                 .createQueryBuilder()
                 .update(Literature_ug)
                 .set({
@@ -263,7 +263,7 @@ export class WriteController {
         if (!eq_expr_id) {
             await this.writeDB('equilibrium_expressions_user_gen', input.equilibriumExpressionInfo);
             eq_expr_id = await this.getId('equilibrium_expressions_user_gen', temp_eq);
-            await WriterDataSource
+            await WriterDataSource!
                 .createQueryBuilder()
                 .update(LiteratureMapping_ug)
                 .set({
@@ -296,7 +296,7 @@ export class WriteController {
         console.log(retstring)
         var result = null;
         try {
-            result = await WriterDataSource
+            result = await WriterDataSource!
                 .getRepository(tables[table])
                 .createQueryBuilder()
                 .where(retstring, valuesCheckAgainst)
@@ -314,7 +314,7 @@ export class WriteController {
 
     // writes to the database. Simple and sweet
     async writeDB(table: string, valuesToInsert: {[s:string]: any}) {
-        await WriterDataSource
+        await WriterDataSource!
             .getRepository(tables[table])
             .createQueryBuilder()
             .insert()
