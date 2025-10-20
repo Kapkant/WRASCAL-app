@@ -51,6 +51,7 @@ COPY --from=build /opt/package.json ./package.json
 
 # Copy additional files
 COPY ./views ./views
+COPY ./public ./public
 COPY ./processes.config.js ./
 
 # Create non-root user for security
