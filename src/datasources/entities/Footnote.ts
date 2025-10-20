@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryColumn } from "typeorm";
-import { object, serializeEnum, string } from "@tsed/schema";
+import { object, string } from "@tsed/schema";
 
 export enum NoteType {
   Solid = "Solid",
@@ -19,7 +19,7 @@ export enum NoteType {
 }
 
 export const NoteSchema = object({
-  type: serializeEnum(NoteType),
+  type: string(), // Changed from serializeEnum(NoteType)
   content: string()
 });
 

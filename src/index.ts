@@ -2,6 +2,12 @@ import { $log } from "@tsed/common";
 import { PlatformExpress } from "@tsed/platform-express";
 import { Server } from "./Server";
 
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  $log.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit the process, just log the error
+});
+
 async function bootstrap() {
   try {
     const platform = await PlatformExpress.bootstrap(Server);
