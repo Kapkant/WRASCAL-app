@@ -24,7 +24,8 @@ export const PostgresDataSource = new DataSource({
   database: process.env.DB_NAME,
   schema: process.env.DB_SCHEMA,
   ssl: process.env.DB_SSL === "true" ? { 
-    rejectUnauthorized: false
+    rejectUnauthorized: false,
+    require: true
   } : false,
   // Auto-create tables in development to avoid missing table errors
   synchronize: process.env.TYPEORM_SYNC === "true" || process.env.NODE_ENV !== "production",
