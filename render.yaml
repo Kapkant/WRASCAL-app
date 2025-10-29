@@ -24,6 +24,6 @@ services:
       - key: DB_USERNAME
         value: wrascal_db_user
       - key: DB_PASSWORD
-        value: d5x7Xjm4cjRyfu7yBhqpl2bhKXqF1tK
+        value: d5x7Xjm4cj4Ryfu7yBhqpl2bhKXqF1tk
       - key: DB_NAME
         value: wrascal_db
