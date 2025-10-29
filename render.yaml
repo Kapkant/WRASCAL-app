@@ -18,12 +18,12 @@ services:
         value: public
       # Database environment variables for Professor's database:
       - key: DB_HOST
-        value: dpg-coa67df79t8c73ed886g-9.oregon-postgres.render.com
+        value: dpg-coa67df79t8c73ed886g-a.oregon-postgres.render.com
       - key: DB_PORT
         value: 5432
       - key: DB_USERNAME
         value: wrascal_db_user
       - key: DB_PASSWORD
-        value: d5x7Xjm4cj4Ryfu7yBhqpL2bhKXqF1tK
+        value: d5x7Xjm4cjRyfu7yBhqpl2bhKXqF1tK
       - key: DB_NAME
         value: wrascal_db
