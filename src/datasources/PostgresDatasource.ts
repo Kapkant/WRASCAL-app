@@ -24,8 +24,7 @@ export const PostgresDataSource = new DataSource({
   database: process.env.DB_NAME,
   schema: process.env.DB_SCHEMA,
   ssl: process.env.DB_SSL === "true" ? { 
-    rejectUnauthorized: false,
-    require: true
+    rejectUnauthorized: false
   } : false,
   // Auto-create tables in development to avoid missing table errors
   synchronize: process.env.TYPEORM_SYNC === "true" || process.env.NODE_ENV !== "production",
@@ -38,7 +37,12 @@ export const PostgresDataSource = new DataSource({
     createTimeoutMillis: 30000,
     // Add retry settings
     retryDelayMillis: 2000,
-    retryAttempts: 3
+    retryAttempts: 3,
+    // SSL configuration for Render PostgreSQL
+    ssl: process.env.DB_SSL === "true" ? { 
+      rejectUnauthorized: false,
+      require: true
+    } : false
   }
 });
 
