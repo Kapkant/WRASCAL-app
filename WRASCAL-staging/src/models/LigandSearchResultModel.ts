@@ -30,6 +30,8 @@ export class ProcessedLigandAdvanceSearchResultModel extends LigandSearchResultM
     result.central_element = raw.central_element
     result.ligand_id = raw.ligand_id
     result.metal_id = raw.metal_id
+    result.form = raw.form
+    result.formula_string = raw.formula_string
 
     {
       let molecularFormula = ''
