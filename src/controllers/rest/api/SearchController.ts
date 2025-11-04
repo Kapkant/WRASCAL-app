@@ -51,17 +51,17 @@ export class SearchController {
 
     return await this.dataSource
       .getRepository(Constant)
-      .createQueryBuilder()
+      .createQueryBuilder("constants")
       .distinct(true)
-      .select(["central_element", "ligand_id", "metal_id"])
+      .select(["constants.central_element", "constants.ligand_id", "constants.metal_id"])
       .addSelect("ligands.name", "name")
       .addSelect("ligands.charge", "ligand_charge")
       .addSelect("ligands.form", "form")
       .addSelect("metals.charge", "metal_charge")
       .addSelect("metals.formula_string", "formula_string")
-      .innerJoin("ligands", "ligands", "ligand_id = ligands.id")
-      .innerJoin("metals", "metals", "metal_id = metals.id")
-      .where(`name iLike '%${ligandsStr}%'`)
+      .innerJoin("ligands", "ligands", "constants.ligand_id = ligands.id")
+      .innerJoin("metals", "metals", "constants.metal_id = metals.id")
+      .where(`ligands.name iLike '%${ligandsStr}%'`)
       .getRawMany<LigandSearchResultModel>();
   }
 
@@ -85,20 +85,20 @@ export class SearchController {
     }
 
     const hasLigandsFilter = ArrayUtils.any(searchReq.ligands);
-    const whereQuery = `name iLike '%${searchReq?.ligands?.join("%")}%'`;
+    const whereQuery = `ligands.name iLike '%${searchReq?.ligands?.join("%")}%'`;
     const limit = searchReq.limit ?? 300;
 
     let query = this.dataSource
       .getRepository(Constant)
-      .createQueryBuilder()
+      .createQueryBuilder("constants")
       .distinct(true)
-      .select(["name", "molecular_formula", "categories", "central_element", "ligand_id", "metal_id"])
+      .select(["ligands.name", "constants.molecular_formula", "constants.categories", "constants.central_element", "constants.ligand_id", "constants.metal_id"])
       .addSelect("ligands.charge", "ligand_charge")
       .addSelect("ligands.form", "form")
       .addSelect("metals.charge", "metal_charge")
       .addSelect("metals.formula_string", "formula_string")
-      .innerJoin("ligands", "ligands", "ligand_id = ligands.id")
-      .innerJoin("metals", "metals", "metal_id = metals.id")
+      .innerJoin("ligands", "ligands", "constants.ligand_id = ligands.id")
+      .innerJoin("metals", "metals", "constants.metal_id = metals.id")
       .limit(limit);
 
     if (hasLigandsFilter) query = query.where(whereQuery);
@@ -106,8 +106,8 @@ export class SearchController {
     if (ArrayUtils.any(searchReq.metals)) {
       const metalStr = searchReq.metals?.map((m) => `'${m}'`).join(",");
 
-      if (hasLigandsFilter) query = query.andWhere(`central_element IN (${metalStr})`);
-      else query = query.where(`central_element IN (${metalStr})`);
+      if (hasLigandsFilter) query = query.andWhere(`constants.central_element IN (${metalStr})`);
+      else query = query.where(`constants.central_element IN (${metalStr})`);
     }
 
     if (ArrayUtils.any(searchReq.ligandCharges)) {
@@ -125,13 +125,13 @@ export class SearchController {
     if (ArrayUtils.any(searchReq.categories)) {
       // eslint-disable-next-line
       const categoryStr = searchReq.categories!.map((m) => `'${m}'`).join(",");
-      query = query.andWhere(`categories @> ARRAY[${categoryStr}]`);
+      query = query.andWhere(`constants.categories @> ARRAY[${categoryStr}]`);
     }
 
     if (ArrayUtils.any(searchReq.chemicals)) {
       // eslint-disable-next-line
       const chemicalStr = searchReq.chemicals!.join(",");
-      query = query.andWhere(`(molecular_formula).atom_counts @> ARRAY[${chemicalStr}]::molecularformulaentry[]`);
+      query = query.andWhere(`(constants.molecular_formula).atom_counts @> ARRAY[${chemicalStr}]::molecularformulaentry[]`);
     }
 
     const rawResult = await query.getRawMany<LigandAdvanceSearchRawResult>();
