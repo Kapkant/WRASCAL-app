@@ -53,7 +53,7 @@ export class SearchController {
       .getRepository(Constant)
       .createQueryBuilder("constants")
       .distinct(true)
-      .select(["constants.central_element", "constants.ligand_id", "constants.metal_id"])
+      .select(["metals.central_element", "constants.ligand_id", "constants.metal_id"])
       .addSelect("ligands.name", "name")
       .addSelect("ligands.charge", "ligand_charge")
       .addSelect("ligands.form", "form")
@@ -92,7 +92,7 @@ export class SearchController {
       .getRepository(Constant)
       .createQueryBuilder("constants")
       .distinct(true)
-      .select(["ligands.name", "constants.molecular_formula", "constants.categories", "constants.central_element", "constants.ligand_id", "constants.metal_id"])
+      .select(["ligands.name", "ligands.molecular_formula", "ligands.categories", "metals.central_element", "constants.ligand_id", "constants.metal_id"])
       .addSelect("ligands.charge", "ligand_charge")
       .addSelect("ligands.form", "form")
       .addSelect("metals.charge", "metal_charge")
@@ -106,8 +106,8 @@ export class SearchController {
     if (ArrayUtils.any(searchReq.metals)) {
       const metalStr = searchReq.metals?.map((m) => `'${m}'`).join(",");
 
-      if (hasLigandsFilter) query = query.andWhere(`constants.central_element IN (${metalStr})`);
-      else query = query.where(`constants.central_element IN (${metalStr})`);
+      if (hasLigandsFilter) query = query.andWhere(`metals.central_element IN (${metalStr})`);
+      else query = query.where(`metals.central_element IN (${metalStr})`);
     }
 
     if (ArrayUtils.any(searchReq.ligandCharges)) {
@@ -125,13 +125,13 @@ export class SearchController {
     if (ArrayUtils.any(searchReq.categories)) {
       // eslint-disable-next-line
       const categoryStr = searchReq.categories!.map((m) => `'${m}'`).join(",");
-      query = query.andWhere(`constants.categories @> ARRAY[${categoryStr}]`);
+      query = query.andWhere(`ligands.categories @> ARRAY[${categoryStr}]`);
     }
 
     if (ArrayUtils.any(searchReq.chemicals)) {
       // eslint-disable-next-line
       const chemicalStr = searchReq.chemicals!.join(",");
-      query = query.andWhere(`(constants.molecular_formula).atom_counts @> ARRAY[${chemicalStr}]::molecularformulaentry[]`);
+      query = query.andWhere(`(ligands.molecular_formula).atom_counts @> ARRAY[${chemicalStr}]::molecularformulaentry[]`);
     }
 
     const rawResult = await query.getRawMany<LigandAdvanceSearchRawResult>();
