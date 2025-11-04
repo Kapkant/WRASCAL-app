@@ -160,19 +160,19 @@ export class SearchController {
 
     const withQuery = this.dataSource
       .getRepository(Constant)
-      .createQueryBuilder()
+      .createQueryBuilder("constants")
       .select([
-        "value",
-        "significant_figures",
-        "equilibrium_expression_id",
-        "conditions_id",
-        "uncertainty_id",
-        "footnote_id",
-        "ligand_id",
-        "metal_id"
+        "constants.value",
+        "constants.significant_figures",
+        "constants.equilibrium_expression_id",
+        "constants.conditions_id",
+        "constants.uncertainty_id",
+        "constants.footnote_id",
+        "constants.ligand_id",
+        "constants.metal_id"
       ])
-      .where(`ligand_id = ${constReq.ligandId}`)
-      .andWhere(`metal_id = ${constReq.metalId}`)
+      .where(`constants.ligand_id = ${constReq.ligandId}`)
+      .andWhere(`constants.metal_id = ${constReq.metalId}`)
       .getQuery();
 
     const resultRaw = await this.dataSource!
@@ -180,26 +180,26 @@ export class SearchController {
       .addCommonTableExpression(withQuery, "table_ids")
       .distinct(true)
       .select([
-        "name",
-        "molecular_formula",
-        "value",
-        "significant_figures",
-        "categories",
-        "central_element",
-        "constant_kind",
-        "temperature",
-        "temperature_varies",
-        "ionic_strength",
-        "expression_string",
-        "products",
-        "reactants",
-        "notes",
-        "direction",
-        "magnitude"
+        "ligands.name",
+        "ligands.molecular_formula",
+        "table_ids.value",
+        "table_ids.significant_figures",
+        "ligands.categories",
+        "metals.central_element",
+        "conditions.constant_kind",
+        "conditions.temperature",
+        "conditions.temperature_varies",
+        "conditions.ionic_strength",
+        "equilibrium_expressions.expression_string",
+        "equilibrium_expressions.products",
+        "equilibrium_expressions.reactants",
+        "equilibrium_expressions.notes",
+        "equilibrium_expressions.direction",
+        "equilibrium_expressions.magnitude"
       ])
       .addSelect("footnotes.legacy_identifier", "legacy_identifier")
       .addSelect("ligands.charge", "ligand_charge")
-      .addSelect("(form).protonation", "protonation")
+      .addSelect("(ligands.form).protonation", "protonation")
       .addSelect("metals.charge", "metal_charge")
       .from("table_ids", "table_ids")
       .leftJoin("ligands", "ligands", "ligands.id = table_ids.ligand_id")
