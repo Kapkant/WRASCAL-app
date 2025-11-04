@@ -24,6 +24,10 @@ export default defineConfig({
     },
     extensions: [".js", ".json", ".jsx", ".mjs", ".ts", ".tsx", ".vue"],
   },
+  build: {
+    outDir: "../public",
+    emptyOutDir: true,
+  },
   server: {
     port: 3000,
     strictPort: true,
