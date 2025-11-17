@@ -70,15 +70,15 @@
             <template v-slot:expanded-row="{ columns, item }">
               <tr>
                 <td :colspan="columns.length" class="pa-4">
-                  <div v-if="loadingConstants[getMetalKey(item.raw)]" class="text-center pa-4">
+                  <div v-if="loadingConstants[getMetalKey(getItemData(item))]" class="text-center pa-4">
                     <v-progress-circular indeterminate color="primary"></v-progress-circular>
                     <div class="mt-2">Loading constants...</div>
                   </div>
-                  <div v-else-if="constantsData[getMetalKey(item.raw)] && constantsData[getMetalKey(item.raw)].length > 0">
+                  <div v-else-if="constantsData[getMetalKey(getItemData(item))] && constantsData[getMetalKey(getItemData(item))].length > 0">
                     <div class="text-subtitle-2 mb-3">Constants Data:</div>
                     <v-data-table
                       :headers="constantHeaders"
-                      :items="constantsData[getMetalKey(item.raw)]"
+                      :items="constantsData[getMetalKey(getItemData(item))]"
                       :items-per-page="20"
                       class="elevation-1"
                     >
@@ -102,13 +102,13 @@
                       <v-btn
                         color="primary"
                         prepend-icon="mdi-share"
-                        @click="goToDetailPage(item.raw)"
+                        @click="goToDetailPage(getItemData(item))"
                       >
                         View Full Details
                       </v-btn>
                     </div>
                   </div>
-                  <div v-else-if="constantsData[getMetalKey(item.raw)] && constantsData[getMetalKey(item.raw)].length === 0" class="text-center pa-4">
+                  <div v-else-if="constantsData[getMetalKey(getItemData(item))] && constantsData[getMetalKey(getItemData(item))].length === 0" class="text-center pa-4">
                     <v-alert type="info" variant="tonal">
                       No constants data available for this metal-ligand combination.
                     </v-alert>
@@ -116,7 +116,7 @@
                       <v-btn
                         color="primary"
                         prepend-icon="mdi-share"
-                        @click="goToDetailPage(item.raw)"
+                        @click="goToDetailPage(getItemData(item))"
                       >
                         View Detail Page
                       </v-btn>
@@ -134,7 +134,7 @@
                 rounded="pill"
                 color="primary"
                 prepend-icon="mdi-share"
-                @click="goToDetailPage(item.raw)"
+                @click="goToDetailPage(getItemData(item))"
               >
                 Detail
               </v-btn>
@@ -143,7 +143,7 @@
                 rounded="pill"
                 color="secondary"
                 prepend-icon="mdi-open-in-new"
-                @click="openDetailInNewTab(item.raw)"
+                @click="openDetailInNewTab(getItemData(item))"
               >
                 Open
               </v-btn>
@@ -152,27 +152,27 @@
                 rounded="pill"
                 color="tertiary"
                 prepend-icon="mdi-content-copy"
-                @click="copyLink(item.raw)"
+                @click="copyLink(getItemData(item))"
               >
                 Copy Link
               </v-btn>
             </template>
             <template v-slot:[`item.name`]="{ item }">
-              <span v-html="highlightMatch(item.raw.name)"></span>
+              <span v-html="highlightMatch(getItemData(item).name)"></span>
             </template>
             <template v-slot:[`item.molecular_formula`]="{ item }">
-              <div v-html="item.raw.molecular_formula"></div>
+              <div v-html="getItemData(item).molecular_formula"></div>
             </template>
             <template v-slot:[`item.form`]="{ item }">
-              <div class="no-katex-html" v-html="getFormattedProtonationForm(item.raw.form)"></div>
+              <div class="no-katex-html" v-html="getFormattedProtonationForm(getItemData(item).form)"></div>
             </template>
             <template v-slot:[`item.metal_charge`]="{ item }">
-              <v-chip class="ma-1" color="blue" @click="filterByMetal(item.raw.central_element)">
-                {{ (item.raw.metal_charge > 0 ? `+${item.raw.metal_charge}` : item.raw.metal_charge) }}
+              <v-chip class="ma-1" color="blue" @click="filterByMetal(getItemData(item).central_element)">
+                {{ (getItemData(item).metal_charge > 0 ? `+${getItemData(item).metal_charge}` : getItemData(item).metal_charge) }}
               </v-chip>
             </template>
             <template v-slot:[`item.formula_string`]="{ item }">
-              <div class="no-katex-html" v-html="getFormattedMetalForm(item.raw.formula_string)"></div>
+              <div class="no-katex-html" v-html="getFormattedMetalForm(getItemData(item).formula_string)"></div>
             </template>
           </v-data-table>
         </v-col>
@@ -258,12 +258,15 @@ export default defineComponent({
         console.log('expandedRows changed:', newVal.length, 'rows expanded');
         // When a row is expanded, load constants if not already loaded
         for (const row of newVal) {
-          if (row && row.raw) {
-            const metalKey = this.getMetalKey(row.raw);
-            console.log('Row expanded, metalKey:', metalKey, 'hasData:', !!this.constantsData[metalKey]);
-            if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
-              console.log('Loading constants for', metalKey);
-              this.loadConstants(row.raw);
+          if (row) {
+            const itemData = this.getItemData(row);
+            if (itemData) {
+              const metalKey = this.getMetalKey(itemData);
+              console.log('Row expanded, metalKey:', metalKey, 'hasData:', !!this.constantsData[metalKey]);
+              if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
+                console.log('Loading constants for', metalKey);
+                this.loadConstants(itemData);
+              }
             }
           }
         }
@@ -284,6 +287,10 @@ export default defineComponent({
       }
 
       this.groupBy = temp
+    },
+    getItemData(item: any): LigandSearchResultModel {
+      // In grouped tables, item might be the data directly or wrapped in item.raw
+      return item?.raw || item;
     },
     getMetalKey(item: LigandSearchResultModel): string {
       return `${item.central_element}_${item.metal_id}_${item.ligand_id}`;
@@ -323,9 +330,19 @@ export default defineComponent({
       return value.toString();
     },
     goToDetailPage(item: LigandSearchResultModel){
-      const store = searchResultStore()
+      console.log('goToDetailPage called with item:', item);
+      console.log('item.ligand_id:', item?.ligand_id, 'item.metal_id:', item?.metal_id);
+      
+      // Validate required fields
+      if (!item || !item.ligand_id || !item.metal_id) {
+        console.error('Invalid item passed to goToDetailPage:', item);
+        alert('Error: Missing required data (ligand_id or metal_id). Please try selecting a different result.');
+        return;
+      }
 
+      const store = searchResultStore()
       store.selectedSearchResult = item
+      console.log('Set selectedSearchResult in store:', store.selectedSearchResult);
 
       this.$router.push('/detail-view')
     },
@@ -368,6 +385,12 @@ export default defineComponent({
   },
   mounted() {
     const store = searchResultStore()
+
+    console.log('SearchResult mounted - store.searchResult:', store.searchResult);
+    console.log('First result sample:', store.searchResult[0]);
+    if (store.searchResult[0]) {
+      console.log('First result has ligand_id:', store.searchResult[0].ligand_id, 'metal_id:', store.searchResult[0].metal_id);
+    }
 
     this.searchResult = store.searchResult
     this.groupBy = [{key: 'name'}, {key: 'central_element'}]

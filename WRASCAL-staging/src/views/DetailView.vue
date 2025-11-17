@@ -939,8 +939,16 @@ export default defineComponent({
     this.failedReferenceCount = 0;
 
     // Validate that selectedSearchResult exists and has required fields
+    console.log('DetailView mounted - store.selectedSearchResult:', store.selectedSearchResult);
+    if (store.selectedSearchResult) {
+      console.log('selectedSearchResult.ligand_id:', store.selectedSearchResult.ligand_id);
+      console.log('selectedSearchResult.metal_id:', store.selectedSearchResult.metal_id);
+      console.log('selectedSearchResult keys:', Object.keys(store.selectedSearchResult));
+    }
+    
     if (!store.selectedSearchResult || !store.selectedSearchResult.ligand_id || !store.selectedSearchResult.metal_id) {
       console.error('Invalid selectedSearchResult:', store.selectedSearchResult);
+      console.error('Missing fields - ligand_id:', store.selectedSearchResult?.ligand_id, 'metal_id:', store.selectedSearchResult?.metal_id);
       this.isLoading = false;
       this.failedResources.push({
         resourceName: "Search Result",
