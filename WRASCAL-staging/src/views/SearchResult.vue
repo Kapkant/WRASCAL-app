@@ -47,105 +47,84 @@
                 </div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <div class="pa-2">
-                  <v-list>
-                    <template v-for="(metalGroup, metalKey) in groupMetalsByLigand(ligandGroup)" :key="metalKey">
-                      <v-list-item>
-                        <template v-slot:prepend>
-                          <v-btn
-                            icon
-                            variant="text"
-                            size="small"
-                            @click="toggleMetalPanel(metalKey, metalGroup)"
-                          >
-                            <v-icon>{{ openedMetalKeys.includes(metalKey) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-                          </v-btn>
-                        </template>
-                        <v-list-item-title>
-                          <div class="d-flex align-center">
-                            <span class="text-subtitle-1 mr-3">
-                              {{ metalGroup[0].central_element }}<sup v-html="formatCharge(metalGroup[0].metal_charge)"></sup>
-                            </span>
-                            <v-chip size="small" color="secondary" class="mr-2">
-                              {{ metalGroup.length }} entry/entries
-                            </v-chip>
-                            <v-chip size="small" color="info" v-if="metalGroup[0].formula_string">
-                              <div class="no-katex-html" v-html="getFormattedMetalForm(metalGroup[0].formula_string)"></div>
-                            </v-chip>
-                          </div>
-                        </v-list-item-title>
-                      </v-list-item>
-                      <div v-if="openedMetalKeys.includes(metalKey)" class="pa-4" style="display: block; border: 2px solid red;">
-                        <div>DEBUG: Content should be visible for {{ metalKey }}</div>
-                        <div v-if="loadingConstants[metalKey]" class="text-center pa-4">
-                            <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                            <div class="mt-2">Loading constants...</div>
-                          </div>
-                          <div v-else-if="!constantsData[metalKey]" class="text-center pa-4">
-                            <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                            <div class="mt-2">Loading constants...</div>
-                          </div>
-                          <div v-else-if="constantsData[metalKey] && constantsData[metalKey].length > 0">
-                            <v-data-table
-                              :headers="constantHeaders"
-                              :items="constantsData[metalKey]"
-                              :items-per-page="20"
-                              class="elevation-1"
-                            >
-                              <template v-slot:[`item.expression_string`]="{ item }">
-                                <div v-html="item.expression_string || '-'"></div>
-                              </template>
-                              <template v-slot:[`item.constant_kind`]="{ item }">
-                                {{ item.constant_kind || '-' }}
-                              </template>
-                              <template v-slot:[`item.temperature`]="{ item }">
-                                {{ item.temperature !== undefined ? item.temperature + (item.temperature_varies ? ' (varies)' : '') : '-' }}
-                              </template>
-                              <template v-slot:[`item.ionic_strength`]="{ item }">
-                                {{ item.ionic_strength !== undefined ? item.ionic_strength : '-' }}
-                              </template>
-                              <template v-slot:[`item.value`]="{ item }">
-                                {{ item.value !== undefined ? formatValue(item.value, item.significant_figures) : '-' }}
-                              </template>
-                              <template v-slot:[`item.data-table-expand`]="{ item }">
-                                <v-btn
-                                  size="small"
-                                  variant="text"
-                                  @click="goToDetailPage(metalGroup[0])"
-                                >
-                                  View Details
-                                </v-btn>
-                              </template>
-                            </v-data-table>
-                            <div class="mt-3">
-                              <v-btn
-                                color="primary"
-                                prepend-icon="mdi-share"
-                                @click="goToDetailPage(metalGroup[0])"
-                              >
-                                View Full Details
-                              </v-btn>
-                            </div>
-                          </div>
-                          <div v-else-if="constantsData[metalKey] && constantsData[metalKey].length === 0" class="text-center pa-4">
-                            <v-alert type="info" variant="tonal">
-                              No constants data available for this metal-ligand combination.
-                            </v-alert>
-                            <div class="mt-3">
-                              <v-btn
-                                color="primary"
-                                prepend-icon="mdi-share"
-                                @click="goToDetailPage(metalGroup[0])"
-                              >
-                                View Detail Page
-                              </v-btn>
-                            </div>
-                          </div>
+                <v-expansion-panels variant="accordion" multiple>
+                  <v-expansion-panel
+                    v-for="(metalGroup, metalKey) in groupMetalsByLigand(ligandGroup)"
+                    :key="metalKey"
+                    @update:model-value="onMetalPanelOpen(metalKey, metalGroup, $event)"
+                  >
+                    <v-expansion-panel-title>
+                      <div class="d-flex align-center">
+                        <span class="text-subtitle-1 mr-3">
+                          {{ metalGroup[0].central_element }}<sup v-html="formatCharge(metalGroup[0].metal_charge)"></sup>
+                        </span>
+                        <v-chip size="small" color="secondary" class="mr-2">
+                          {{ metalGroup.length }} entry/entries
+                        </v-chip>
+                        <v-chip size="small" color="info" v-if="metalGroup[0].formula_string">
+                          <div class="no-katex-html" v-html="getFormattedMetalForm(metalGroup[0].formula_string)"></div>
+                        </v-chip>
                       </div>
-                      <v-divider class="my-2"></v-divider>
-                    </template>
-                  </v-list>
-                </div>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                      <div v-if="loadingConstants[metalKey]" class="text-center pa-4">
+                        <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                        <div class="mt-2">Loading constants...</div>
+                      </div>
+                      <div v-else-if="constantsData[metalKey] && constantsData[metalKey].length > 0">
+                        <v-data-table
+                          :headers="constantHeaders"
+                          :items="constantsData[metalKey]"
+                          :items-per-page="20"
+                          class="elevation-1"
+                        >
+                          <template v-slot:[`item.expression_string`]="{ item }">
+                            <div v-html="item.expression_string || '-'"></div>
+                          </template>
+                          <template v-slot:[`item.constant_kind`]="{ item }">
+                            {{ item.constant_kind || '-' }}
+                          </template>
+                          <template v-slot:[`item.temperature`]="{ item }">
+                            {{ item.temperature !== undefined ? item.temperature + (item.temperature_varies ? ' (varies)' : '') : '-' }}
+                          </template>
+                          <template v-slot:[`item.ionic_strength`]="{ item }">
+                            {{ item.ionic_strength !== undefined ? item.ionic_strength : '-' }}
+                          </template>
+                          <template v-slot:[`item.value`]="{ item }">
+                            {{ item.value !== undefined ? formatValue(item.value, item.significant_figures) : '-' }}
+                          </template>
+                        </v-data-table>
+                        <div class="mt-3">
+                          <v-btn
+                            color="primary"
+                            prepend-icon="mdi-share"
+                            @click="goToDetailPage(metalGroup[0])"
+                          >
+                            View Full Details
+                          </v-btn>
+                        </div>
+                      </div>
+                      <div v-else-if="constantsData[metalKey] && constantsData[metalKey].length === 0" class="text-center pa-4">
+                        <v-alert type="info" variant="tonal">
+                          No constants data available for this metal-ligand combination.
+                        </v-alert>
+                        <div class="mt-3">
+                          <v-btn
+                            color="primary"
+                            prepend-icon="mdi-share"
+                            @click="goToDetailPage(metalGroup[0])"
+                          >
+                            View Detail Page
+                          </v-btn>
+                        </div>
+                      </div>
+                      <div v-else class="text-center pa-4">
+                        <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                        <div class="mt-2">Loading constants...</div>
+                      </div>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
               </v-expansion-panel-text>
             </v-expansion-panel>
           </v-expansion-panels>
@@ -170,7 +149,6 @@ import {searchResultStore} from "@/stores/searchResultStore";
 import {useMeta} from "vue-meta";
 import katex from "katex";
 import MetalDisplayUtils from "@/utils/MetalDisplayUtils";
-import ProtonationDisplayUtil from "@/utils/ProtonationDisplayUtil";
 import {LigandSearchResultModel} from "@/models/LigandSearchResultModel";
 import {getConstants} from "@/axiosClient";
 import {ConstantResultModel} from "@/models/ConstantResultModel";
@@ -188,7 +166,6 @@ export default defineComponent({
     lastQuery: '',
     constantsData: {} as Record<string, ConstantResultModel[]>,
     loadingConstants: {} as Record<string, boolean>,
-    openedMetalKeys: [] as string[],
     constantHeaders: [
       {
         title: "Expression",
@@ -199,13 +176,13 @@ export default defineComponent({
       { title: "Temp (°C)", align: "end", key: "temperature" },
       { title: "Ionic Strength (M)", align: "center", key: "ionic_strength" },
       { title: "Value", align: "start", key: "value" },
-      { title: "Actions", key: "data-table-expand" },
     ],
   }),
   computed: {
     groupedByLigand(): Record<string, LigandSearchResultModel[]> {
       const grouped: Record<string, LigandSearchResultModel[]> = {};
       for (const result of this.searchResult) {
+        if (!result.name) continue; // Skip if name is undefined
         if (!grouped[result.name]) {
           grouped[result.name] = [];
         }
@@ -229,21 +206,10 @@ export default defineComponent({
       }
       return grouped;
     },
-    toggleMetalPanel(metalKey: string, metalGroup: LigandSearchResultModel[]) {
-      console.log('toggleMetalPanel called', metalKey, 'current openedMetalKeys:', this.openedMetalKeys);
-      const index = this.openedMetalKeys.indexOf(metalKey);
-      if (index > -1) {
-        this.openedMetalKeys.splice(index, 1);
-        console.log('Removed from openedMetalKeys:', this.openedMetalKeys);
-      } else {
-        this.openedMetalKeys.push(metalKey);
-        console.log('Added to openedMetalKeys:', this.openedMetalKeys);
-        // Load constants when opening
-        if (metalGroup && metalGroup.length > 0) {
-          if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
-            console.log('Loading constants for', metalKey);
-            this.loadConstants(metalGroup[0]);
-          }
+    onMetalPanelOpen(metalKey: string, metalGroup: LigandSearchResultModel[], isOpen: boolean) {
+      if (isOpen && metalGroup && metalGroup.length > 0) {
+        if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
+          this.loadConstants(metalGroup[0]);
         }
       }
     },
