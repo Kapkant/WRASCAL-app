@@ -85,7 +85,8 @@ export class SearchController {
     }
 
     const hasLigandsFilter = ArrayUtils.any(searchReq.ligands);
-    const whereQuery = `ligands.name iLike '%${searchReq?.ligands?.join("%")}%'`;
+    const ligandsArray = Array.isArray(searchReq.ligands) ? searchReq.ligands.filter(l => l && l.trim() !== '') : [];
+    const whereQuery = hasLigandsFilter && ligandsArray.length > 0 ? `ligands.name iLike '%${ligandsArray.join("%")}%'` : '';
     const limit = searchReq.limit ?? 300;
 
     let query = this.dataSource
@@ -101,7 +102,7 @@ export class SearchController {
       .innerJoin("metals", "metals", "constants.metal_id = metals.id")
       .limit(limit);
 
-    if (hasLigandsFilter) query = query.where(whereQuery);
+    if (hasLigandsFilter && whereQuery) query = query.where(whereQuery);
 
     if (ArrayUtils.any(searchReq.metals)) {
       const metalStr = searchReq.metals?.map((m) => `'${m}'`).join(",");

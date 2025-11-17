@@ -49,35 +49,34 @@
               <v-expansion-panel-text>
                 <div class="pa-2">
                   <v-list>
-                    <v-list-item
-                      v-for="(metalGroup, metalKey) in groupMetalsByLigand(ligandGroup)"
-                      :key="metalKey"
-                    >
-                      <template v-slot:prepend>
-                        <v-btn
-                          icon
-                          variant="text"
-                          size="small"
-                          @click="toggleMetalPanel(metalKey)"
-                        >
-                          <v-icon>{{ openedMetalKeys.includes(metalKey) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-                        </v-btn>
-                      </template>
-                      <v-list-item-title>
-                        <div class="d-flex align-center">
-                          <span class="text-subtitle-1 mr-3">
-                            {{ metalGroup[0].central_element }}<sup v-html="formatCharge(metalGroup[0].metal_charge)"></sup>
-                          </span>
-                          <v-chip size="small" color="secondary" class="mr-2">
-                            {{ metalGroup.length }} entry/entries
-                          </v-chip>
-                          <v-chip size="small" color="info" v-if="metalGroup[0].formula_string">
-                            <div class="no-katex-html" v-html="getFormattedMetalForm(metalGroup[0].formula_string)"></div>
-                          </v-chip>
-                        </div>
-                      </v-list-item-title>
+                    <template v-for="(metalGroup, metalKey) in groupMetalsByLigand(ligandGroup)" :key="metalKey">
+                      <v-list-item>
+                        <template v-slot:prepend>
+                          <v-btn
+                            icon
+                            variant="text"
+                            size="small"
+                            @click="toggleMetalPanel(metalKey)"
+                          >
+                            <v-icon>{{ openedMetalKeys.includes(metalKey) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+                          </v-btn>
+                        </template>
+                        <v-list-item-title>
+                          <div class="d-flex align-center">
+                            <span class="text-subtitle-1 mr-3">
+                              {{ metalGroup[0].central_element }}<sup v-html="formatCharge(metalGroup[0].metal_charge)"></sup>
+                            </span>
+                            <v-chip size="small" color="secondary" class="mr-2">
+                              {{ metalGroup.length }} entry/entries
+                            </v-chip>
+                            <v-chip size="small" color="info" v-if="metalGroup[0].formula_string">
+                              <div class="no-katex-html" v-html="getFormattedMetalForm(metalGroup[0].formula_string)"></div>
+                            </v-chip>
+                          </div>
+                        </v-list-item-title>
+                      </v-list-item>
                       <v-expand-transition>
-                        <div v-if="openedMetalKeys.includes(metalKey)" class="mt-4">
+                        <div v-if="openedMetalKeys.includes(metalKey)" class="pa-4">
                           <div v-if="loadingConstants[metalKey]" class="text-center pa-4">
                             <v-progress-circular indeterminate color="primary"></v-progress-circular>
                             <div class="mt-2">Loading constants...</div>
@@ -144,8 +143,8 @@
                           </div>
                         </div>
                       </v-expand-transition>
-                    </v-list-item>
-                    <v-divider></v-divider>
+                      <v-divider class="my-2"></v-divider>
+                    </template>
                   </v-list>
                 </div>
               </v-expansion-panel-text>
