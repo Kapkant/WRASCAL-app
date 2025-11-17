@@ -173,9 +173,8 @@ export class SearchController {
         "constants.ligand_id",
         "constants.metal_id"
       ])
-      .where(`constants.ligand_id = ${constReq.ligandId}`)
-      .andWhere(`constants.metal_id = ${constReq.metalId}`)
-      .getQuery();
+      .where("constants.ligand_id = :ligandId", { ligandId: constReq.ligandId })
+      .andWhere("constants.metal_id = :metalId", { metalId: constReq.metalId });
 
     const resultRaw = await this.dataSource!
       .createQueryBuilder()

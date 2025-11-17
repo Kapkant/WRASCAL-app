@@ -347,10 +347,21 @@ export default defineComponent({
       this.$router.push('/detail-view')
     },
     openDetailInNewTab(item: LigandSearchResultModel){
-      const url = `${window.location.origin}/#/detail-view`;
-      // save selected item then open
+      console.log('openDetailInNewTab called with item:', item);
+      console.log('item.ligand_id:', item?.ligand_id, 'item.metal_id:', item?.metal_id);
+      
+      // Validate required fields
+      if (!item || !item.ligand_id || !item.metal_id) {
+        console.error('Invalid item passed to openDetailInNewTab:', item);
+        alert('Error: Missing required data (ligand_id or metal_id). Please try selecting a different result.');
+        return;
+      }
+
       const store = searchResultStore()
       store.selectedSearchResult = item as any
+      console.log('Set selectedSearchResult in store for new tab:', store.selectedSearchResult);
+      
+      const url = `${window.location.origin}/#/detail-view`;
       window.open(url, '_blank')
     },
     async copyLink(item: LigandSearchResultModel){

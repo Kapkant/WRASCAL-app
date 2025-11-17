@@ -410,9 +410,11 @@ declare interface RequestFailedModel {
 export default defineComponent({
   name: "DetailView",
   setup: () => {
+    const theme = useTheme();
     useMeta({
       title: "Detail",
     });
+    return { theme };
   },
   data() {
     return {
@@ -987,8 +989,7 @@ export default defineComponent({
   },
   computed: {
     molViewStyle(): string {
-      const theme = useTheme();
-      const background = theme.global.current.value.dark
+      const background = this.theme.global.current.value.dark
         ? "gray"
         : "transparent";
 
