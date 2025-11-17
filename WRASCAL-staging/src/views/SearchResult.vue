@@ -47,34 +47,28 @@
                 </div>
               </v-expansion-panel-title>
               <v-expansion-panel-text>
-                <v-expansion-panels variant="accordion" multiple>
-                  <v-expansion-panel
-                    v-for="(metalGroup, metalKey) in groupMetalsByLigand(ligandGroup)"
-                    :key="metalKey"
-                  >
-                    <v-expansion-panel-title>
-                      <div class="d-flex align-center">
-                        <span class="text-subtitle-1 mr-3">
-                          {{ metalGroup[0].central_element }}<sup v-html="formatCharge(metalGroup[0].metal_charge)"></sup>
-                        </span>
-                        <v-chip size="small" color="secondary" class="mr-2">
-                          {{ metalGroup.length }} entry/entries
-                        </v-chip>
-                        <v-chip size="small" color="info" v-if="metalGroup[0].formula_string">
-                          <div class="no-katex-html" v-html="getFormattedMetalForm(metalGroup[0].formula_string)"></div>
-                        </v-chip>
-                      </div>
-                    </v-expansion-panel-title>
-                    <v-expansion-panel-text>
-                      <div v-if="!constantsData[metalKey] && !loadingConstants[metalKey]" class="text-center pa-4">
-                        <v-btn
-                          color="primary"
-                          @click="loadConstants(metalGroup[0])"
-                        >
-                          Load Constants
-                        </v-btn>
-                      </div>
-                      <div v-else-if="loadingConstants[metalKey]" class="text-center pa-4">
+                <div class="pa-2">
+                  <v-expansion-panels variant="accordion" multiple @update:model-value="onMetalPanelUpdate(ligandGroup, $event)">
+                    <v-expansion-panel
+                      v-for="(metalGroup, metalKey, index) in groupMetalsByLigand(ligandGroup)"
+                      :key="metalKey"
+                      :value="index"
+                    >
+                      <v-expansion-panel-title>
+                        <div class="d-flex align-center">
+                          <span class="text-subtitle-1 mr-3">
+                            {{ metalGroup[0].central_element }}<sup v-html="formatCharge(metalGroup[0].metal_charge)"></sup>
+                          </span>
+                          <v-chip size="small" color="secondary" class="mr-2">
+                            {{ metalGroup.length }} entry/entries
+                          </v-chip>
+                          <v-chip size="small" color="info" v-if="metalGroup[0].formula_string">
+                            <div class="no-katex-html" v-html="getFormattedMetalForm(metalGroup[0].formula_string)"></div>
+                          </v-chip>
+                        </div>
+                      </v-expansion-panel-title>
+                      <v-expansion-panel-text>
+                      <div v-if="loadingConstants[metalKey]" class="text-center pa-4">
                         <v-progress-circular indeterminate color="primary"></v-progress-circular>
                         <div class="mt-2">Loading constants...</div>
                       </div>
@@ -134,9 +128,10 @@
                           </v-btn>
                         </div>
                       </div>
-                    </v-expansion-panel-text>
-                  </v-expansion-panel>
-                </v-expansion-panels>
+                      </v-expansion-panel-text>
+                    </v-expansion-panel>
+                  </v-expansion-panels>
+                </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
           </v-expansion-panels>
@@ -218,6 +213,20 @@ export default defineComponent({
         grouped[metalKey].push(result);
       }
       return grouped;
+    },
+    onMetalPanelUpdate(ligandGroup: LigandSearchResultModel[], openedIndices: number[]) {
+      const metalGroups = this.groupMetalsByLigand(ligandGroup);
+      const metalKeys = Object.keys(metalGroups);
+      
+      for (const index of openedIndices) {
+        if (index < metalKeys.length) {
+          const metalKey = metalKeys[index];
+          const metalGroup = metalGroups[metalKey];
+          if (metalGroup && metalGroup.length > 0 && !this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
+            this.loadConstants(metalGroup[0]);
+          }
+        }
+      }
     },
     async loadConstants(item: LigandSearchResultModel) {
       const metalKey = `${item.central_element}_${item.metal_id}_${item.ligand_id}`;
