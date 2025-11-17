@@ -160,63 +160,58 @@ export class SearchController {
       throw new BadRequest("Database not available - service is in offline mode");
     }
 
-    const withQuery = this.dataSource
-      .getRepository(Constant)
-      .createQueryBuilder("constants")
-      .select([
-        "constants.value",
-        "constants.significant_figures",
-        "constants.equilibrium_expression_id",
-        "constants.conditions_id",
-        "constants.uncertainty_id",
-        "constants.footnote_id",
-        "constants.ligand_id",
-        "constants.metal_id"
-      ])
-      .where("constants.ligand_id = :ligandId", { ligandId: constReq.ligandId })
-      .andWhere("constants.metal_id = :metalId", { metalId: constReq.metalId });
+    try {
+      console.log("getConstants called with:", { ligandId: constReq.ligandId, metalId: constReq.metalId });
 
-    const resultRaw = await this.dataSource!
-      .createQueryBuilder()
-      .addCommonTableExpression(withQuery, "table_ids")
-      .distinct(true)
-      .select([
-        "ligands.name",
-        "ligands.molecular_formula",
-        "table_ids.value",
-        "table_ids.significant_figures",
-        "ligands.categories",
-        "metals.central_element",
-        "conditions.constant_kind",
-        "conditions.temperature",
-        "conditions.temperature_varies",
-        "conditions.ionic_strength",
-        "equilibrium_expressions.expression_string",
-        "equilibrium_expressions.products",
-        "equilibrium_expressions.reactants",
-        "equilibrium_expressions.notes",
-        "equilibrium_expressions.direction",
-        "equilibrium_expressions.magnitude"
-      ])
-      .addSelect("footnotes.legacy_identifier", "legacy_identifier")
-      .addSelect("ligands.charge", "ligand_charge")
-      .addSelect("(ligands.form).protonation", "protonation")
-      .addSelect("metals.charge", "metal_charge")
-      .from("table_ids", "table_ids")
-      .leftJoin("ligands", "ligands", "ligands.id = table_ids.ligand_id")
-      .leftJoin("metals", "metals", "metals.id = table_ids.metal_id")
-      .leftJoin("equilibrium_expressions", "equilibrium_expressions", "equilibrium_expressions.id = table_ids.equilibrium_expression_id")
-      .leftJoin("uncertainties", "uncertainties", "uncertainties.id = table_ids.uncertainty_id")
-      .leftJoin("footnotes", "footnotes", "footnotes.id = table_ids.footnote_id")
-      .leftJoin("conditions", "conditions", "conditions.id = table_ids.conditions_id")
-      .getRawMany<ConstantResultRawModel>();
+      const resultRaw = await this.dataSource!
+        .getRepository(Constant)
+        .createQueryBuilder("constants")
+        .distinct(true)
+        .select([
+          "ligands.name",
+          "ligands.molecular_formula",
+          "constants.value",
+          "constants.significant_figures",
+          "ligands.categories",
+          "metals.central_element",
+          "conditions.constant_kind",
+          "conditions.temperature",
+          "conditions.temperature_varies",
+          "conditions.ionic_strength",
+          "equilibrium_expressions.expression_string",
+          "equilibrium_expressions.products",
+          "equilibrium_expressions.reactants",
+          "equilibrium_expressions.notes",
+          "equilibrium_expressions.direction",
+          "equilibrium_expressions.magnitude"
+        ])
+        .addSelect("footnotes.legacy_identifier", "legacy_identifier")
+        .addSelect("ligands.charge", "ligand_charge")
+        .addSelect("(ligands.form).protonation", "protonation")
+        .addSelect("metals.charge", "metal_charge")
+        .leftJoin("ligands", "ligands", "ligands.id = constants.ligand_id")
+        .leftJoin("metals", "metals", "metals.id = constants.metal_id")
+        .leftJoin("equilibrium_expressions", "equilibrium_expressions", "equilibrium_expressions.id = constants.equilibrium_expression_id")
+        .leftJoin("uncertainties", "uncertainties", "uncertainties.id = constants.uncertainty_id")
+        .leftJoin("footnotes", "footnotes", "footnotes.id = constants.footnote_id")
+        .leftJoin("conditions", "conditions", "conditions.id = constants.conditions_id")
+        .where("constants.ligand_id = :ligandId", { ligandId: constReq.ligandId })
+        .andWhere("constants.metal_id = :metalId", { metalId: constReq.metalId })
+        .getRawMany<ConstantResultRawModel>();
 
-    const result: ConstantResultModel[] = [];
+      console.log("getConstants query returned", resultRaw?.length || 0, "results");
 
-    resultRaw.forEach((r) => {
-      result.push(ConstantResultModel.fromRaw(r));
-    });
+      const result: ConstantResultModel[] = [];
 
-    return result;
+      resultRaw.forEach((r) => {
+        result.push(ConstantResultModel.fromRaw(r));
+      });
+
+      console.log("getConstants returning", result.length, "processed results");
+      return result;
+    } catch (error) {
+      console.error("getConstants error:", error);
+      throw error;
+    }
   }
 }
