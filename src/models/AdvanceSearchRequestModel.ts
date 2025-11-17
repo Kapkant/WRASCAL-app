@@ -1,4 +1,4 @@
-import { number, object, string } from "@tsed/schema";
+import { array, number, object, string } from "@tsed/schema";
 
 export class AdvanceSearchRequestModel {
   ligands?: string[];
@@ -29,12 +29,12 @@ export class AdvanceSearchRequestModel {
 }
 
 export const AdvanceSearchRequestSchema = object({
-  ligands: string().description(""),
-  metals: string().description(""),
-  categories: string().description(""),
-  ligandCharges: number().description(""),
-  metalCharges: number().description(""),
-  chemicals: string().description(""),
+  ligands: array().items(string()).description(""),
+  metals: array().items(string()).description(""),
+  categories: array().items(string()).description(""),
+  ligandCharges: array().items(number()).description(""),
+  metalCharges: array().items(number()).description(""),
+  chemicals: array().items(string()).description(""),
   limit: number().description("")
 });
 
