@@ -47,7 +47,8 @@ export class SearchController {
       throw new BadRequest("Database not available - service is in offline mode");
     }
 
-    const ligandsStr = ligands.join("%");
+    const ligandsStr = ligands.filter(l => l && l.trim()).join("%");
+    if (!ligandsStr) throw new BadRequest("No valid ligand names provided");
 
     return await this.dataSource
       .getRepository(Constant)

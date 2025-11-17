@@ -56,7 +56,7 @@
                             icon
                             variant="text"
                             size="small"
-                            @click="toggleMetalPanel(metalKey)"
+                            @click="toggleMetalPanel(metalKey, metalGroup)"
                           >
                             <v-icon>{{ openedMetalKeys.includes(metalKey) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
                           </v-btn>
@@ -75,9 +75,8 @@
                           </div>
                         </v-list-item-title>
                       </v-list-item>
-                      <v-expand-transition>
-                        <div v-if="openedMetalKeys.includes(metalKey)" class="pa-4">
-                          <div v-if="loadingConstants[metalKey]" class="text-center pa-4">
+                      <div v-if="openedMetalKeys.includes(metalKey)" class="pa-4" style="display: block;">
+                        <div v-if="loadingConstants[metalKey]" class="text-center pa-4">
                             <v-progress-circular indeterminate color="primary"></v-progress-circular>
                             <div class="mt-2">Loading constants...</div>
                           </div>
@@ -142,7 +141,7 @@
                             </div>
                           </div>
                         </div>
-                      </v-expand-transition>
+                      </div>
                       <v-divider class="my-2"></v-divider>
                     </template>
                   </v-list>
@@ -230,21 +229,16 @@ export default defineComponent({
       }
       return grouped;
     },
-    toggleMetalPanel(metalKey: string) {
+    toggleMetalPanel(metalKey: string, metalGroup: LigandSearchResultModel[]) {
       const index = this.openedMetalKeys.indexOf(metalKey);
       if (index > -1) {
         this.openedMetalKeys.splice(index, 1);
       } else {
         this.openedMetalKeys.push(metalKey);
         // Load constants when opening
-        const metalGroups = this.groupedByLigand;
-        for (const ligandName in metalGroups) {
-          const metals = this.groupMetalsByLigand(metalGroups[ligandName]);
-          if (metals[metalKey] && metals[metalKey].length > 0) {
-            if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
-              this.loadConstants(metals[metalKey][0]);
-            }
-            break;
+        if (metalGroup && metalGroup.length > 0) {
+          if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
+            this.loadConstants(metalGroup[0]);
           }
         }
       }
