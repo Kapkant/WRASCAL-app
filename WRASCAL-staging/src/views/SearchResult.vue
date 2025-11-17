@@ -48,7 +48,7 @@
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <div class="pa-2">
-                  <v-expansion-panels variant="accordion" multiple @update:model-value="onMetalPanelUpdate(ligandGroup, $event)">
+                  <v-expansion-panels variant="accordion" multiple v-model="openedMetalPanels" @update:model-value="onMetalPanelUpdate(ligandGroup, $event)">
                     <v-expansion-panel
                       v-for="(metalGroup, metalKey, index) in groupMetalsByLigand(ligandGroup)"
                       :key="metalKey"
@@ -69,6 +69,10 @@
                       </v-expansion-panel-title>
                       <v-expansion-panel-text>
                       <div v-if="loadingConstants[metalKey]" class="text-center pa-4">
+                        <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                        <div class="mt-2">Loading constants...</div>
+                      </div>
+                      <div v-else-if="!constantsData[metalKey]" class="text-center pa-4">
                         <v-progress-circular indeterminate color="primary"></v-progress-circular>
                         <div class="mt-2">Loading constants...</div>
                       </div>
@@ -174,6 +178,7 @@ export default defineComponent({
     lastQuery: '',
     constantsData: {} as Record<string, ConstantResultModel[]>,
     loadingConstants: {} as Record<string, boolean>,
+    openedMetalPanels: [] as number[],
     constantHeaders: [
       {
         title: "Expression",
@@ -222,8 +227,11 @@ export default defineComponent({
         if (index < metalKeys.length) {
           const metalKey = metalKeys[index];
           const metalGroup = metalGroups[metalKey];
-          if (metalGroup && metalGroup.length > 0 && !this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
-            this.loadConstants(metalGroup[0]);
+          if (metalGroup && metalGroup.length > 0) {
+            // Always try to load if not already loaded or loading
+            if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
+              this.loadConstants(metalGroup[0]);
+            }
           }
         }
       }
