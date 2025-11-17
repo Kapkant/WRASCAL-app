@@ -698,6 +698,16 @@ export default defineComponent({
     loadConstants() {
       const store = searchResultStore();
 
+      if (!store.selectedSearchResult || !store.selectedSearchResult.ligand_id || !store.selectedSearchResult.metal_id) {
+        this.failedResources.push({
+          resourceName: "Constants",
+          detail: "Missing ligand_id or metal_id",
+          action: () => this.loadConstants(),
+        });
+        this.isLoading = false;
+        return;
+      }
+
       getConstants(
         store.selectedSearchResult.ligand_id,
         store.selectedSearchResult.metal_id
@@ -780,6 +790,9 @@ export default defineComponent({
               isChecked: false,
             },
           ];
+          
+          // Set loading to false after constants load (if mol data and references are also done)
+          this.checkLoadingComplete();
         })
         .catch(async (err) => {
           this.failedConstantCount += 1;
@@ -797,9 +810,34 @@ export default defineComponent({
             detail: err,
             action: () => this.loadConstants(),
           });
+          
+          this.checkLoadingComplete();
         });
     },
+    checkLoadingComplete() {
+      // Set isLoading to false once all data has been attempted to load
+      // We check if constants have been loaded (or failed after retries)
+      if (this.failedConstantCount >= 3 || this.constants.length > 0 || this.originalData.length > 0 || this.noDataAvailable) {
+        // Also check if mol data and references have completed (or failed)
+        const molDataDone = this.molData !== null || this.failedMolDataCount >= 3;
+        const referencesDone = this.references.length > 0 || this.failedReferenceCount >= 3;
+        const constantsDone = this.constants.length > 0 || this.originalData.length > 0 || this.noDataAvailable || this.failedConstantCount >= 3;
+        
+        if (constantsDone && molDataDone && referencesDone) {
+          this.isLoading = false;
+        }
+      }
+    },
     async loadMolData() {
+      if (!this.selectedSearchResult || !this.selectedSearchResult.ligand_id) {
+        this.failedResources.push({
+          resourceName: "MolData",
+          detail: "Missing ligand_id",
+          action: () => this.loadMolData(),
+        });
+        return;
+      }
+
       try {
         // Try real API first
         const result = await getMolData(this.selectedSearchResult.ligand_id);
@@ -814,6 +852,7 @@ export default defineComponent({
 
           const smiles = await this.getSmileCode();
           this.smileStr = smiles;
+          this.checkLoadingComplete();
           return;
         }
       } catch (err) {
@@ -835,6 +874,7 @@ export default defineComponent({
           const smiles = await this.getSmileCode();
           this.smileStr = smiles;
           console.log("✅ Using mock molecular data for visualization testing");
+          this.checkLoadingComplete();
           return;
         }
       } catch (mockErr) {
@@ -847,13 +887,28 @@ export default defineComponent({
         detail: "Both real API and mock data failed",
         action: () => this.loadMolData(),
       });
+      
+      this.checkLoadingComplete();
     },
     loadReferences() {
+      if (!this.selectedSearchResult || !this.selectedSearchResult.ligand_id) {
+        this.failedResources.push({
+          resourceName: "References",
+          detail: "Missing ligand_id",
+          action: () => this.loadReferences(),
+        });
+        return;
+      }
+
       getReferences(this.selectedSearchResult.ligand_id)
         .then((result) => {
-          if (!result) return;
+          if (!result) {
+            this.checkLoadingComplete();
+            return;
+          }
 
           this.references = result;
+          this.checkLoadingComplete();
         })
         .catch(async (err) => {
           this.failedReferenceCount += 1;
@@ -871,6 +926,8 @@ export default defineComponent({
             detail: err,
             action: () => this.loadReferences(),
           });
+          
+          this.checkLoadingComplete();
         });
     },
   },
@@ -881,16 +938,37 @@ export default defineComponent({
     this.failedMolDataCount = 0;
     this.failedReferenceCount = 0;
 
+    // Validate that selectedSearchResult exists and has required fields
+    if (!store.selectedSearchResult || !store.selectedSearchResult.ligand_id || !store.selectedSearchResult.metal_id) {
+      console.error('Invalid selectedSearchResult:', store.selectedSearchResult);
+      this.isLoading = false;
+      this.failedResources.push({
+        resourceName: "Search Result",
+        detail: "Invalid search result selected. Please go back and select a valid result.",
+        action: () => this.$router.push('/')
+      });
+      return;
+    }
+
     this.selectedSearchResult = store.selectedSearchResult;
-    this.categories =
-      store.selectedSearchResult.categories == ""
-        ? null
-        : store.selectedSearchResult.categories?.split(",") ?? null;
-    this.molecular_formula = store.selectedSearchResult.molecular_formula;
+    
+    // Handle categories - may be missing for simple search results
+    if (store.selectedSearchResult.categories) {
+      this.categories =
+        store.selectedSearchResult.categories == ""
+          ? null
+          : store.selectedSearchResult.categories.split(",");
+    } else {
+      this.categories = null; // Will be populated from constants data
+    }
+    
+    // Handle molecular_formula - may be missing for simple search results
+    this.molecular_formula = store.selectedSearchResult.molecular_formula || null;
+    
     this.element_with_charge = `${
-      store.selectedSearchResult.central_element
+      store.selectedSearchResult.central_element || '-'
     }<sup>${ElementDisplayUtils.formatElementCharge(
-      +store.selectedSearchResult.metal_charge
+      +store.selectedSearchResult.metal_charge || 0
     )}</sup>`;
 
     this.isLoading = true;
