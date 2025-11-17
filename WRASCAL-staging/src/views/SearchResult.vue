@@ -75,7 +75,8 @@
                           </div>
                         </v-list-item-title>
                       </v-list-item>
-                      <div v-if="openedMetalKeys.includes(metalKey)" class="pa-4" style="display: block;">
+                      <div v-if="openedMetalKeys.includes(metalKey)" class="pa-4" style="display: block; border: 2px solid red;">
+                        <div>DEBUG: Content should be visible for {{ metalKey }}</div>
                         <div v-if="loadingConstants[metalKey]" class="text-center pa-4">
                             <v-progress-circular indeterminate color="primary"></v-progress-circular>
                             <div class="mt-2">Loading constants...</div>
@@ -140,7 +141,6 @@
                               </v-btn>
                             </div>
                           </div>
-                        </div>
                       </div>
                       <v-divider class="my-2"></v-divider>
                     </template>
@@ -230,14 +230,18 @@ export default defineComponent({
       return grouped;
     },
     toggleMetalPanel(metalKey: string, metalGroup: LigandSearchResultModel[]) {
+      console.log('toggleMetalPanel called', metalKey, 'current openedMetalKeys:', this.openedMetalKeys);
       const index = this.openedMetalKeys.indexOf(metalKey);
       if (index > -1) {
         this.openedMetalKeys.splice(index, 1);
+        console.log('Removed from openedMetalKeys:', this.openedMetalKeys);
       } else {
         this.openedMetalKeys.push(metalKey);
+        console.log('Added to openedMetalKeys:', this.openedMetalKeys);
         // Load constants when opening
         if (metalGroup && metalGroup.length > 0) {
           if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
+            console.log('Loading constants for', metalKey);
             this.loadConstants(metalGroup[0]);
           }
         }
