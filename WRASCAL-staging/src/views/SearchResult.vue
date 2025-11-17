@@ -14,7 +14,9 @@
               Search Result
             </div>
             <div class="d-flex text-caption text-left">
-              Here you can view the current search results organized by ligand and metal. Expand each accordion to see the available data tables.
+              Here you can view the current search results and click on one of the entries to go to the details page for that compound.
+              Clicking on the title in the table header will sort the items in ascending/descending order by that column.
+              Click on the drop-down boxes and buttons at the bottom to control the content displayed on each page and switch between pages.
             </div>
           </div>
         </v-card-item>
@@ -25,6 +27,13 @@
           </v-btn>
           <v-spacer></v-spacer>
           <div class="text-caption mr-3">{{ searchResult.length }} result(s)</div>
+          <v-select
+            :items="pageSizeOptions"
+            v-model="itemsPerPage"
+            label="Rows per page"
+            density="compact"
+            style="max-width: 160px"
+          ></v-select>
         </v-card-actions>
       </v-card>
 
@@ -33,101 +42,139 @@
           <v-alert v-if="searchResult.length === 0" type="info" variant="tonal" border="start" class="mb-6">
             No results found. Try a different ligand name or adjust your filters.
           </v-alert>
-          <v-expansion-panels v-else variant="accordion" multiple>
-            <v-expansion-panel
-              v-for="(ligandGroup, ligandName) in groupedByLigand"
-              :key="ligandName"
-            >
-              <v-expansion-panel-title>
-                <div class="d-flex align-center">
-                  <span v-html="highlightMatch(ligandName)" class="text-h6 mr-3"></span>
-                  <v-chip size="small" color="primary" class="mr-2">
-                    {{ ligandGroup.length }} metal(s)
-                  </v-chip>
-                </div>
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <v-expansion-panels variant="accordion" multiple>
-                  <v-expansion-panel
-                    v-for="(metalGroup, metalKey) in groupMetalsByLigand(ligandGroup)"
-                    :key="metalKey"
-                    @update:model-value="onMetalPanelOpen(metalKey, metalGroup, $event)"
-                  >
-                    <v-expansion-panel-title>
-                      <div class="d-flex align-center">
-                        <span class="text-subtitle-1 mr-3">
-                          {{ metalGroup[0].central_element }}<sup v-html="formatCharge(metalGroup[0].metal_charge)"></sup>
-                        </span>
-                        <v-chip size="small" color="secondary" class="mr-2">
-                          {{ metalGroup.length }} entry/entries
-                        </v-chip>
-                        <v-chip size="small" color="info" v-if="metalGroup[0].formula_string">
-                          <div class="no-katex-html" v-html="getFormattedMetalForm(metalGroup[0].formula_string)"></div>
-                        </v-chip>
-                      </div>
-                    </v-expansion-panel-title>
-                    <v-expansion-panel-text>
-                      <div v-if="loadingConstants[metalKey]" class="text-center pa-4">
-                        <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                        <div class="mt-2">Loading constants...</div>
-                      </div>
-                      <div v-else-if="constantsData[metalKey] && constantsData[metalKey].length > 0">
-                        <v-data-table
-                          :headers="constantHeaders"
-                          :items="constantsData[metalKey]"
-                          :items-per-page="20"
-                          class="elevation-1"
-                        >
-                          <template v-slot:[`item.expression_string`]="{ item }">
-                            <div v-html="item.expression_string || '-'"></div>
-                          </template>
-                          <template v-slot:[`item.constant_kind`]="{ item }">
-                            {{ item.constant_kind || '-' }}
-                          </template>
-                          <template v-slot:[`item.temperature`]="{ item }">
-                            {{ item.temperature !== undefined ? item.temperature + (item.temperature_varies ? ' (varies)' : '') : '-' }}
-                          </template>
-                          <template v-slot:[`item.ionic_strength`]="{ item }">
-                            {{ item.ionic_strength !== undefined ? item.ionic_strength : '-' }}
-                          </template>
-                          <template v-slot:[`item.value`]="{ item }">
-                            {{ item.value !== undefined ? formatValue(item.value, item.significant_figures) : '-' }}
-                          </template>
-                        </v-data-table>
-                        <div class="mt-3">
-                          <v-btn
-                            color="primary"
-                            prepend-icon="mdi-share"
-                            @click="goToDetailPage(metalGroup[0])"
-                          >
-                            View Full Details
-                          </v-btn>
-                        </div>
-                      </div>
-                      <div v-else-if="constantsData[metalKey] && constantsData[metalKey].length === 0" class="text-center pa-4">
-                        <v-alert type="info" variant="tonal">
-                          No constants data available for this metal-ligand combination.
-                        </v-alert>
-                        <div class="mt-3">
-                          <v-btn
-                            color="primary"
-                            prepend-icon="mdi-share"
-                            @click="goToDetailPage(metalGroup[0])"
-                          >
-                            View Detail Page
-                          </v-btn>
-                        </div>
-                      </div>
-                      <div v-else class="text-center pa-4">
-                        <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                        <div class="mt-2">Loading constants...</div>
-                      </div>
-                    </v-expansion-panel-text>
-                  </v-expansion-panel>
-                </v-expansion-panels>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-          </v-expansion-panels>
+          <v-data-table
+            v-else
+            v-model:items-per-page="itemsPerPage"
+            v-model:expanded="expandedRows"
+            :group-by="groupBy"
+            :headers="headers"
+            :items="searchResult"
+            item-value="name"
+            show-expand
+            class="elevation-1"
+          >
+            <template v-slot:group-header="{ item, columns, toggleGroup, isGroupOpen }">
+              <tr class="text-left">
+                <td :colspan="columns.length">
+                  <VBtn
+                    size="small"
+                    variant="text"
+                    :class="`ml-${item.depth * 5}`"
+                    :icon="isGroupOpen(item) ? '$expand' : '$next'"
+                    @click="toggleGroup(item)"
+                  ></VBtn>
+                  <span v-html="item.value"></span>
+                </td>
+              </tr>
+            </template>
+            <template v-slot:expanded-row="{ columns, item }">
+              <tr>
+                <td :colspan="columns.length" class="pa-4">
+                  <div v-if="loadingConstants[getMetalKey(item.raw)]" class="text-center pa-4">
+                    <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                    <div class="mt-2">Loading constants...</div>
+                  </div>
+                  <div v-else-if="constantsData[getMetalKey(item.raw)] && constantsData[getMetalKey(item.raw)].length > 0">
+                    <div class="text-subtitle-2 mb-3">Constants Data:</div>
+                    <v-data-table
+                      :headers="constantHeaders"
+                      :items="constantsData[getMetalKey(item.raw)]"
+                      :items-per-page="20"
+                      class="elevation-1"
+                    >
+                      <template v-slot:[`item.expression_string`]="{ item }">
+                        <div v-html="item.expression_string || '-'"></div>
+                      </template>
+                      <template v-slot:[`item.constant_kind`]="{ item }">
+                        {{ item.constant_kind || '-' }}
+                      </template>
+                      <template v-slot:[`item.temperature`]="{ item }">
+                        {{ item.temperature !== undefined ? item.temperature + (item.temperature_varies ? ' (varies)' : '') : '-' }}
+                      </template>
+                      <template v-slot:[`item.ionic_strength`]="{ item }">
+                        {{ item.ionic_strength !== undefined ? item.ionic_strength : '-' }}
+                      </template>
+                      <template v-slot:[`item.value`]="{ item }">
+                        {{ item.value !== undefined ? formatValue(item.value, item.significant_figures) : '-' }}
+                      </template>
+                    </v-data-table>
+                    <div class="mt-3">
+                      <v-btn
+                        color="primary"
+                        prepend-icon="mdi-share"
+                        @click="goToDetailPage(item.raw)"
+                      >
+                        View Full Details
+                      </v-btn>
+                    </div>
+                  </div>
+                  <div v-else-if="constantsData[getMetalKey(item.raw)] && constantsData[getMetalKey(item.raw)].length === 0" class="text-center pa-4">
+                    <v-alert type="info" variant="tonal">
+                      No constants data available for this metal-ligand combination.
+                    </v-alert>
+                    <div class="mt-3">
+                      <v-btn
+                        color="primary"
+                        prepend-icon="mdi-share"
+                        @click="goToDetailPage(item.raw)"
+                      >
+                        View Detail Page
+                      </v-btn>
+                    </div>
+                  </div>
+                  <div v-else class="text-center pa-4">
+                    <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                    <div class="mt-2">Loading constants...</div>
+                  </div>
+                </td>
+              </tr>
+            </template>
+            <template v-slot:[`item.actions`]="{ item }">
+              <v-btn
+                rounded="pill"
+                color="primary"
+                prepend-icon="mdi-share"
+                @click="goToDetailPage(item.raw)"
+              >
+                Detail
+              </v-btn>
+              <v-btn
+                class="ml-2"
+                rounded="pill"
+                color="secondary"
+                prepend-icon="mdi-open-in-new"
+                @click="openDetailInNewTab(item.raw)"
+              >
+                Open
+              </v-btn>
+              <v-btn
+                class="ml-2"
+                rounded="pill"
+                color="tertiary"
+                prepend-icon="mdi-content-copy"
+                @click="copyLink(item.raw)"
+              >
+                Copy Link
+              </v-btn>
+            </template>
+            <template v-slot:[`item.name`]="{ item }">
+              <span v-html="highlightMatch(item.raw.name)"></span>
+            </template>
+            <template v-slot:[`item.molecular_formula`]="{ item }">
+              <div v-html="item.raw.molecular_formula"></div>
+            </template>
+            <template v-slot:[`item.form`]="{ item }">
+              <div class="no-katex-html" v-html="getFormattedProtonationForm(item.raw.form)"></div>
+            </template>
+            <template v-slot:[`item.metal_charge`]="{ item }">
+              <v-chip class="ma-1" color="blue" @click="filterByMetal(item.raw.central_element)">
+                {{ (item.raw.metal_charge > 0 ? `+${item.raw.metal_charge}` : item.raw.metal_charge) }}
+              </v-chip>
+            </template>
+            <template v-slot:[`item.formula_string`]="{ item }">
+              <div class="no-katex-html" v-html="getFormattedMetalForm(item.raw.formula_string)"></div>
+            </template>
+          </v-data-table>
         </v-col>
       </v-row>
     </v-responsive>
@@ -149,10 +196,20 @@ import {searchResultStore} from "@/stores/searchResultStore";
 import {useMeta} from "vue-meta";
 import katex from "katex";
 import MetalDisplayUtils from "@/utils/MetalDisplayUtils";
+import ProtonationDisplayUtil from "@/utils/ProtonationDisplayUtil";
+import GroupByModel from "@/models/Group/GroupByModel";
+import GroupKeyModel from "@/models/Group/GroupKeyModel";
 import {LigandSearchResultModel} from "@/models/LigandSearchResultModel";
 import {getConstants} from "@/axiosClient";
 import {ConstantResultModel} from "@/models/ConstantResultModel";
-import ElementDisplayUtils from "@/utils/ElementDisplayUtils";
+
+const filterKeyMapping: Record<string, string> = {
+  'name': 'Name',
+  'form': 'Protonation Level',
+  'central_element': 'Metal',
+  'metal_charge': 'Metal Charge',
+  'formula_string': 'Formula String'
+}
 
 export default defineComponent({
   name: "SearchResult",
@@ -162,8 +219,24 @@ export default defineComponent({
     })
   },
   data: () => ({
+    itemsPerPage: 50,
+    pageSizeOptions: [10, 25, 50, 100],
+    headers: [
+      { title: 'Actions', key: 'actions', sortable: false },
+      {
+        title: 'Name',
+        align: 'start',
+        key: 'name',
+      },
+      { title: 'Protonation Level', align: 'end', key: 'form' },
+      { title: 'Metal Charge', align: 'end', key: 'metal_charge' },
+      { title: 'Formula String', align: 'end', key: 'formula_string'}
+    ],
     searchResult: [] as LigandSearchResultModel[],
+    groupBy: [] as GroupByModel[],
+    groupKeys: [] as GroupKeyModel[],
     lastQuery: '',
+    activeMetalFilter: '',
     constantsData: {} as Record<string, ConstantResultModel[]>,
     loadingConstants: {} as Record<string, boolean>,
     constantHeaders: [
@@ -177,77 +250,71 @@ export default defineComponent({
       { title: "Ionic Strength (M)", align: "center", key: "ionic_strength" },
       { title: "Value", align: "start", key: "value" },
     ],
+    expandedRows: [] as any[]
   }),
-  computed: {
-    groupedByLigand(): Record<string, LigandSearchResultModel[]> {
-      const grouped: Record<string, LigandSearchResultModel[]> = {};
-      for (const result of this.searchResult) {
-        if (!result.name) continue; // Skip if name is undefined
-        if (!grouped[result.name]) {
-          grouped[result.name] = [];
+  watch: {
+    expandedRows: {
+      handler(newVal: any[], oldVal: any[]) {
+        console.log('expandedRows changed:', newVal.length, 'rows expanded');
+        // When a row is expanded, load constants if not already loaded
+        for (const row of newVal) {
+          if (row && row.raw) {
+            const metalKey = this.getMetalKey(row.raw);
+            console.log('Row expanded, metalKey:', metalKey, 'hasData:', !!this.constantsData[metalKey]);
+            if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
+              console.log('Loading constants for', metalKey);
+              this.loadConstants(row.raw);
+            }
+          }
         }
-        grouped[result.name].push(result);
-      }
-      return grouped;
+      },
+      deep: true
     }
   },
   methods: {
     returnToSearchPage(){
       this.$router.go(-1)
     },
-    groupMetalsByLigand(ligandResults: LigandSearchResultModel[]): Record<string, LigandSearchResultModel[]> {
-      const grouped: Record<string, LigandSearchResultModel[]> = {};
-      for (const result of ligandResults) {
-        const metalKey = `${result.central_element}_${result.metal_id}_${result.ligand_id}`;
-        if (!grouped[metalKey]) {
-          grouped[metalKey] = [];
-        }
-        grouped[metalKey].push(result);
+    regroup(){
+      const temp = []
+
+      for(const state of this.groupKeys){
+        if(!state.isChecked) continue
+        temp.push({key: state.key})
       }
-      return grouped;
+
+      this.groupBy = temp
     },
-    onMetalPanelOpen(metalKey: string, metalGroup: LigandSearchResultModel[], isOpen: boolean) {
-      if (isOpen && metalGroup && metalGroup.length > 0) {
-        if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
-          this.loadConstants(metalGroup[0]);
-        }
-      }
+    getMetalKey(item: LigandSearchResultModel): string {
+      return `${item.central_element}_${item.metal_id}_${item.ligand_id}`;
     },
     async loadConstants(item: LigandSearchResultModel) {
-      const metalKey = `${item.central_element}_${item.metal_id}_${item.ligand_id}`;
+      const metalKey = this.getMetalKey(item);
+      console.log('loadConstants called for', metalKey, 'item:', item);
       
       if (this.constantsData[metalKey]) {
+        console.log('Constants already loaded for', metalKey);
         return; // Already loaded
       }
 
       this.loadingConstants[metalKey] = true;
+      console.log('Starting to load constants for', metalKey);
       
       try {
         const constants = await getConstants(item.ligand_id, item.metal_id);
+        console.log('Constants loaded for', metalKey, 'count:', constants?.length || 0);
         if (constants) {
           this.constantsData[metalKey] = constants;
         } else {
           this.constantsData[metalKey] = [];
         }
       } catch (error) {
-        console.error('Error loading constants:', error);
+        console.error('Error loading constants for', metalKey, ':', error);
         this.constantsData[metalKey] = [];
       } finally {
         this.loadingConstants[metalKey] = false;
+        console.log('Finished loading constants for', metalKey);
       }
-    },
-    goToDetailPage(item: LigandSearchResultModel){
-      const store = searchResultStore()
-      store.selectedSearchResult = item as any
-      this.$router.push('/detail-view')
-    },
-    getFormattedMetalForm(form?: string){
-      if(!form) return '-'
-      const latexStr = MetalDisplayUtils.formatMetalFormulaString(form)
-      return katex.renderToString(latexStr, { displayMode: false, throwOnError: false })
-    },
-    formatCharge(charge: string | number): string {
-      return ElementDisplayUtils.formatElementCharge(+charge);
     },
     formatValue(value: number, significantFigures?: number): string {
       if (significantFigures !== undefined) {
@@ -255,15 +322,68 @@ export default defineComponent({
       }
       return value.toString();
     },
+    goToDetailPage(item: LigandSearchResultModel){
+      const store = searchResultStore()
+
+      store.selectedSearchResult = item
+
+      this.$router.push('/detail-view')
+    },
+    openDetailInNewTab(item: LigandSearchResultModel){
+      const url = `${window.location.origin}/#/detail-view`;
+      // save selected item then open
+      const store = searchResultStore()
+      store.selectedSearchResult = item as any
+      window.open(url, '_blank')
+    },
+    async copyLink(item: LigandSearchResultModel){
+      const url = `${window.location.origin}/#/detail-view`
+      try { await navigator.clipboard.writeText(url) } catch {}
+    },
+    getFormattedMetalForm(form?: string){
+      if(!form) return '-'
+
+      const latexStr = MetalDisplayUtils.formatMetalFormulaString(form)
+
+      return katex.renderToString(latexStr, { displayMode: true, throwOnError: false })
+    },
+    getFormattedProtonationForm(pro?: string){
+      if(!pro) return '-'
+
+      const latexStr = ProtonationDisplayUtil.formatProtonationString(pro)
+
+      return katex.renderToString(latexStr, { displayMode: true, throwOnError: false })
+    },
     highlightMatch(text: string){
       if(!this.lastQuery) return text
       const re = new RegExp(`(${this.lastQuery})`, 'ig')
       return text.replace(re, '<span class="mark">$1</span>')
+    },
+    filterByMetal(metal: string){
+      this.activeMetalFilter = metal
+      const store = searchResultStore()
+      // naive filter: filter current results in-memory
+      this.searchResult = store.searchResult.filter(r => r.central_element === metal)
     }
   },
   mounted() {
     const store = searchResultStore()
+
     this.searchResult = store.searchResult
+    this.groupBy = [{key: 'name'}, {key: 'central_element'}]
+
+    this.groupKeys = []
+    for(const key of store.getKeys){
+      if(filterKeyMapping[key] === undefined) continue
+
+      this.groupKeys.push({
+        key: key,
+        name: filterKeyMapping[key],
+        isChecked: (key === "name" || key === "central_element")
+      })
+    }
+
+    // use last query from store for highlight
     this.lastQuery = store.lastQuery
   }
 })
