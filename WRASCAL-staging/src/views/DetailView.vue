@@ -207,7 +207,7 @@
       <v-card
         class="mt-10 text-left"
         title="Options"
-        subtitle="Here are some options that you can use it to reorder data"
+        subtitle="Group data by selecting fields below (optional)"
       >
         <v-card-actions>
           <v-row no-gutters>
@@ -228,14 +228,14 @@
             color="secondary"
             @click="regroup"
           >
-            Regroup
+            Apply Grouping
           </v-btn>
         </v-card-actions>
       </v-card>
 
       <v-data-table
         v-model:items-per-page="itemsPerPage"
-        :group-by="groupBy"
+        :group-by="groupBy.length > 0 ? groupBy : undefined"
         :headers="headers"
         :items="constants"
         :items-per-page="itemsPerPage"
@@ -243,23 +243,6 @@
         multi-sort
         class="mt-8 elevation-1"
       >
-        <template
-          v-slot:group-header="{ item, columns, toggleGroup, isGroupOpen }"
-        >
-          <tr class="text-left">
-            <td :colspan="columns.length" class="pa-2" style="background-color: rgba(0,0,0,0.05);">
-              <VBtn
-                size="small"
-                variant="text"
-                :class="`ml-${item.depth * 5}`"
-                :icon="isGroupOpen(item) ? '$expand' : '$next'"
-                @click="toggleGroup(item)"
-              ></VBtn>
-              <strong v-html="item.value"></strong>
-              <span v-if="item.items" class="text-caption ml-2">({{ item.items.length }} items)</span>
-            </td>
-          </tr>
-        </template>
         <template v-slot:expanded-row="{ columns, item }">
           <tr>
             <td :colspan="columns.length" class="text-left">
@@ -268,81 +251,66 @@
                 FootNote:
                 <div
                   class="ml-2"
-                  v-html="getFootNote(getItemData(item)?.legacy_identifier) ?? 'None'"
+                  v-html="getFootNote(item.legacy_identifier) ?? 'None'"
                 ></div>
               </v-chip>
             </td>
           </tr>
         </template>
         <template v-slot:[`item.constant_kind`]="{ item }">
-          <template v-if="getItemData(item)">
-            <v-chip :color="getConstantKindBadgeColor(getItemData(item).constant_kind)">
-              <div
-                class="no-katex-html"
-                v-html="getFormattedConstantKind(getItemData(item).constant_kind)"
-              ></div>
-            </v-chip>
-          </template>
-          <span v-else>-</span>
-        </template>
-        <template v-slot:[`item.expression_string`]="{ item }">
-          <template v-if="getItemData(item)">
+          <v-chip :color="getConstantKindBadgeColor(item.constant_kind)">
             <div
               class="no-katex-html"
-              v-html="convertExpressionToLatex(getItemData(item).expression_string)"
+              v-html="getFormattedConstantKind(item.constant_kind)"
             ></div>
-          </template>
-          <span v-else>-</span>
+          </v-chip>
+        </template>
+        <template v-slot:[`item.expression_string`]="{ item }">
+          <div
+            class="no-katex-html"
+            v-html="convertExpressionToLatex(item.expression_string)"
+          ></div>
         </template>
         <template v-slot:[`item.temperature`]="{ item }">
-          <template v-if="getItemData(item)">
-            <div>
-              {{ (getItemData(item).temperature !== undefined && getItemData(item).temperature !== null)
-                ? getItemData(item).temperature + (getItemData(item).temperature_varies ? ' (varies)' : '') + ' °C'
-                : '-' }}
-            </div>
-          </template>
-          <span v-else>-</span>
+          <div>
+            {{ (item.temperature !== undefined && item.temperature !== null)
+              ? item.temperature + (item.temperature_varies ? ' (varies)' : '') + ' °C'
+              : '-' }}
+          </div>
         </template>
         <template v-slot:[`item.ionic_strength`]="{ item }">
-          <template v-if="getItemData(item)">
-            <div>
-              {{ (getItemData(item).ionic_strength !== undefined && getItemData(item).ionic_strength !== null)
-                ? getItemData(item).ionic_strength + ' M'
-                : '-' }}
-            </div>
-          </template>
-          <span v-else>-</span>
+          <div>
+            {{ (item.ionic_strength !== undefined && item.ionic_strength !== null)
+              ? item.ionic_strength + ' M'
+              : '-' }}
+          </div>
         </template>
         <template v-slot:[`item.value`]="{ item }">
-          <template v-if="getItemData(item)">
-            <div style="min-width: 150px" class="d-flex align-center">
-              <div
-                class="no-katex-html pl-3 pr-3"
-                v-html="
-                  convertValueWithUncertaintyToLatex1(
-                    getItemData(item).value,
-                    getItemData(item).magnitude,
-                    getItemData(item).direction,
-                    getItemData(item).constant_kind
-                  )
-                "
-              ></div>
-              <div
-                v-if="getItemData(item).constant_kind !== 'Equilibrium'"
-                class="no-katex-html pl-3 pr-3"
-                v-html="
-                  convertValueWithUncertaintyToLatex2(
-                    getItemData(item).value,
-                    getItemData(item).magnitude,
-                    getItemData(item).direction,
-                    getItemData(item).constant_kind
-                  )
-                "
-              ></div>
-            </div>
-          </template>
-          <span v-else>-</span>
+          <div style="min-width: 150px" class="d-flex align-center">
+            <div
+              class="no-katex-html pl-3 pr-3"
+              v-html="
+                convertValueWithUncertaintyToLatex1(
+                  item.value,
+                  item.magnitude,
+                  item.direction,
+                  item.constant_kind
+                )
+              "
+            ></div>
+            <div
+              v-if="item.constant_kind !== 'Equilibrium'"
+              class="no-katex-html pl-3 pr-3"
+              v-html="
+                convertValueWithUncertaintyToLatex2(
+                  item.value,
+                  item.magnitude,
+                  item.direction,
+                  item.constant_kind
+                )
+              "
+            ></div>
+          </div>
         </template>
       </v-data-table>
 
@@ -736,7 +704,9 @@ export default defineComponent({
         temp.push({ key: state.key });
       }
 
-      this.groupBy = temp;
+      // Only apply grouping if at least one field is selected
+      // If none selected, show flat table
+      this.groupBy = temp.length > 0 ? temp : [];
     },
     changeUnbalancedDataState() {
       this.showUnbalancedData = !this.showUnbalancedData;
