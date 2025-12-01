@@ -247,7 +247,7 @@
           v-slot:group-header="{ item, columns, toggleGroup, isGroupOpen }"
         >
           <tr class="text-left">
-            <td :colspan="columns.length">
+            <td :colspan="columns.length" class="pa-2" style="background-color: rgba(0,0,0,0.05);">
               <VBtn
                 size="small"
                 variant="text"
@@ -255,7 +255,8 @@
                 :icon="isGroupOpen(item) ? '$expand' : '$next'"
                 @click="toggleGroup(item)"
               ></VBtn>
-              <span v-html="item.value"></span>
+              <strong v-html="item.value"></strong>
+              <span v-if="item.items" class="text-caption ml-2">({{ item.items.length }} items)</span>
             </td>
           </tr>
         </template>
@@ -267,66 +268,81 @@
                 FootNote:
                 <div
                   class="ml-2"
-                  v-html="getFootNote((item.raw || item).legacy_identifier) ?? 'None'"
+                  v-html="getFootNote(getItemData(item)?.legacy_identifier) ?? 'None'"
                 ></div>
               </v-chip>
             </td>
           </tr>
         </template>
         <template v-slot:[`item.constant_kind`]="{ item }">
-          <v-chip :color="getConstantKindBadgeColor((item.raw || item).constant_kind)">
-            <div
-              class="no-katex-html"
-              v-html="getFormattedConstantKind((item.raw || item).constant_kind)"
-            ></div>
-          </v-chip>
+          <template v-if="getItemData(item)">
+            <v-chip :color="getConstantKindBadgeColor(getItemData(item).constant_kind)">
+              <div
+                class="no-katex-html"
+                v-html="getFormattedConstantKind(getItemData(item).constant_kind)"
+              ></div>
+            </v-chip>
+          </template>
+          <span v-else>-</span>
         </template>
         <template v-slot:[`item.expression_string`]="{ item }">
-          <div
-            class="no-katex-html"
-            v-html="convertExpressionToLatex((item.raw || item).expression_string)"
-          ></div>
+          <template v-if="getItemData(item)">
+            <div
+              class="no-katex-html"
+              v-html="convertExpressionToLatex(getItemData(item).expression_string)"
+            ></div>
+          </template>
+          <span v-else>-</span>
         </template>
         <template v-slot:[`item.temperature`]="{ item }">
-          <div>
-            {{ ((item.raw || item).temperature !== undefined && (item.raw || item).temperature !== null)
-              ? (item.raw || item).temperature + ((item.raw || item).temperature_varies ? ' (varies)' : '') + ' °C'
-              : '-' }}
-          </div>
+          <template v-if="getItemData(item)">
+            <div>
+              {{ (getItemData(item).temperature !== undefined && getItemData(item).temperature !== null)
+                ? getItemData(item).temperature + (getItemData(item).temperature_varies ? ' (varies)' : '') + ' °C'
+                : '-' }}
+            </div>
+          </template>
+          <span v-else>-</span>
         </template>
         <template v-slot:[`item.ionic_strength`]="{ item }">
-          <div>
-            {{ ((item.raw || item).ionic_strength !== undefined && (item.raw || item).ionic_strength !== null)
-              ? (item.raw || item).ionic_strength + ' M'
-              : '-' }}
-          </div>
+          <template v-if="getItemData(item)">
+            <div>
+              {{ (getItemData(item).ionic_strength !== undefined && getItemData(item).ionic_strength !== null)
+                ? getItemData(item).ionic_strength + ' M'
+                : '-' }}
+            </div>
+          </template>
+          <span v-else>-</span>
         </template>
         <template v-slot:[`item.value`]="{ item }">
-          <div style="min-width: 150px" class="d-flex align-center">
-            <div
-              class="no-katex-html pl-3 pr-3"
-              v-html="
-                convertValueWithUncertaintyToLatex1(
-                  (item.raw || item).value,
-                  (item.raw || item).magnitude,
-                  (item.raw || item).direction,
-                  (item.raw || item).constant_kind
-                )
-              "
-            ></div>
-            <div
-              v-if="(item.raw || item).constant_kind !== 'Equilibrium'"
-              class="no-katex-html pl-3 pr-3"
-              v-html="
-                convertValueWithUncertaintyToLatex2(
-                  (item.raw || item).value,
-                  (item.raw || item).magnitude,
-                  (item.raw || item).direction,
-                  (item.raw || item).constant_kind
-                )
-              "
-            ></div>
-          </div>
+          <template v-if="getItemData(item)">
+            <div style="min-width: 150px" class="d-flex align-center">
+              <div
+                class="no-katex-html pl-3 pr-3"
+                v-html="
+                  convertValueWithUncertaintyToLatex1(
+                    getItemData(item).value,
+                    getItemData(item).magnitude,
+                    getItemData(item).direction,
+                    getItemData(item).constant_kind
+                  )
+                "
+              ></div>
+              <div
+                v-if="getItemData(item).constant_kind !== 'Equilibrium'"
+                class="no-katex-html pl-3 pr-3"
+                v-html="
+                  convertValueWithUncertaintyToLatex2(
+                    getItemData(item).value,
+                    getItemData(item).magnitude,
+                    getItemData(item).direction,
+                    getItemData(item).constant_kind
+                  )
+                "
+              ></div>
+            </div>
+          </template>
+          <span v-else>-</span>
         </template>
       </v-data-table>
 
@@ -548,6 +564,26 @@ export default defineComponent({
     },
     returnToSearchResultPage() {
       this.$router.go(-1);
+    },
+    getItemData(item: any): any {
+      // In grouped tables, data might be in item.raw or item directly
+      if (!item) return null;
+      
+      // If it's a group header (has value and items), return null
+      if (item.value !== undefined && item.items !== undefined) {
+        return null;
+      }
+      
+      // Try to get the actual data - in Vuetify grouped tables, data is usually in item.raw
+      // But sometimes it's directly on item if not grouped
+      const data = item.raw || item;
+      
+      // Make sure we have a valid data object (not a group header)
+      if (data && typeof data === 'object' && !data.items) {
+        return data;
+      }
+      
+      return null;
     },
     getFormattedConstantKind(kind?: string) {
       if (!kind) return "-";
@@ -773,9 +809,9 @@ export default defineComponent({
           this.originalData = result;
           this.constants = filteredData;
 
+          // Start with just expression_string grouping to avoid confusion
           this.groupBy = [
             { key: "expression_string" },
-            { key: "constant_kind" },
           ];
           this.groupKeys = [
             {
@@ -786,7 +822,7 @@ export default defineComponent({
             {
               key: "constant_kind",
               name: "Constant Kind",
-              isChecked: true,
+              isChecked: false,
             },
             {
               key: "ionic_strength",
