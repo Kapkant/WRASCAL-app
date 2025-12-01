@@ -268,84 +268,84 @@
                 FootNote:
                 <div
                   class="ml-2"
-                  v-html="getFootNote(getItemDataCached(item)?.legacy_identifier) ?? 'None'"
+                  v-html="getFootNote(safeGet(item, 'legacy_identifier')) ?? 'None'"
                 ></div>
               </v-chip>
             </td>
           </tr>
         </template>
         <template v-slot:[`item.constant_kind`]="{ item }">
-          <template v-if="getItemDataCached(item)">
-            <v-chip v-if="getItemDataCached(item)?.constant_kind" :color="getConstantKindBadgeColor(getItemDataCached(item)?.constant_kind || '')">
+          <span v-if="!getItemDataCached(item)">-</span>
+          <template v-else>
+            <v-chip v-if="safeGet(item, 'constant_kind')" :color="getConstantKindBadgeColor(safeGet(item, 'constant_kind', '') || '')">
               <div
                 class="no-katex-html"
-                v-html="getFormattedConstantKind(getItemDataCached(item)?.constant_kind)"
+                v-html="getFormattedConstantKind(safeGet(item, 'constant_kind'))"
               ></div>
             </v-chip>
             <span v-else>-</span>
           </template>
-          <span v-else>-</span>
         </template>
         <template v-slot:[`item.expression_string`]="{ item }">
-          <template v-if="getItemDataCached(item)">
+          <span v-if="!getItemDataCached(item)">-</span>
+          <template v-else>
             <div
-              v-if="getItemDataCached(item)?.expression_string"
+              v-if="safeGet(item, 'expression_string')"
               class="no-katex-html"
-              v-html="convertExpressionToLatex(getItemDataCached(item)?.expression_string)"
+              v-html="convertExpressionToLatex(safeGet(item, 'expression_string'))"
             ></div>
             <span v-else>-</span>
           </template>
-          <span v-else>-</span>
         </template>
         <template v-slot:[`item.temperature`]="{ item }">
-          <template v-if="getItemDataCached(item)">
+          <span v-if="!getItemDataCached(item)">-</span>
+          <template v-else>
             <div>
-              {{ (getItemDataCached(item)?.temperature !== undefined && getItemDataCached(item)?.temperature !== null)
-                ? getItemDataCached(item)?.temperature + (getItemDataCached(item)?.temperature_varies ? ' (varies)' : '') + ' °C'
+              {{ (safeGet(item, 'temperature') !== undefined && safeGet(item, 'temperature') !== null)
+                ? safeGet(item, 'temperature') + (safeGet(item, 'temperature_varies') ? ' (varies)' : '') + ' °C'
                 : '-' }}
             </div>
           </template>
-          <span v-else>-</span>
         </template>
         <template v-slot:[`item.ionic_strength`]="{ item }">
-          <template v-if="getItemDataCached(item)">
+          <span v-if="!getItemDataCached(item)">-</span>
+          <template v-else>
             <div>
-              {{ (getItemDataCached(item)?.ionic_strength !== undefined && getItemDataCached(item)?.ionic_strength !== null)
-                ? getItemDataCached(item)?.ionic_strength + ' M'
+              {{ (safeGet(item, 'ionic_strength') !== undefined && safeGet(item, 'ionic_strength') !== null)
+                ? safeGet(item, 'ionic_strength') + ' M'
                 : '-' }}
             </div>
           </template>
-          <span v-else>-</span>
         </template>
         <template v-slot:[`item.value`]="{ item }">
-          <template v-if="getItemDataCached(item)">
+          <span v-if="!getItemDataCached(item)">-</span>
+          <template v-else>
             <div style="min-width: 150px" class="d-flex align-center">
               <div
                 class="no-katex-html pl-3 pr-3"
                 v-html="
                   convertValueWithUncertaintyToLatex1(
-                    getItemDataCached(item)?.value,
-                    getItemDataCached(item)?.magnitude,
-                    getItemDataCached(item)?.direction,
-                    getItemDataCached(item)?.constant_kind
+                    safeGet(item, 'value'),
+                    safeGet(item, 'magnitude'),
+                    safeGet(item, 'direction'),
+                    safeGet(item, 'constant_kind')
                   )
                 "
               ></div>
               <div
-                v-if="getItemDataCached(item)?.constant_kind !== 'Equilibrium'"
+                v-if="safeGet(item, 'constant_kind') !== 'Equilibrium'"
                 class="no-katex-html pl-3 pr-3"
                 v-html="
                   convertValueWithUncertaintyToLatex2(
-                    getItemDataCached(item)?.value,
-                    getItemDataCached(item)?.magnitude,
-                    getItemDataCached(item)?.direction,
-                    getItemDataCached(item)?.constant_kind
+                    safeGet(item, 'value'),
+                    safeGet(item, 'magnitude'),
+                    safeGet(item, 'direction'),
+                    safeGet(item, 'constant_kind')
                   )
                 "
               ></div>
             </div>
           </template>
-          <span v-else>-</span>
         </template>
       </v-data-table>
 
@@ -570,87 +570,62 @@ export default defineComponent({
     },
     getItemData(item: any): any {
       try {
-        // Log the item structure for debugging
-        if (!item) {
-          console.warn('DetailView.getItemData: item is null or undefined');
+        if (!item || typeof item !== 'object') {
           return null;
         }
         
-        // Log item structure when it's unexpected
-        const hasValue = item.value !== undefined;
-        const hasItems = item.items !== undefined;
-        const hasRaw = item.raw !== undefined;
-        const itemType = typeof item;
-        const itemKeys = item ? Object.keys(item) : [];
-        
-        // If it's a group header (has value and items), return null
-        if (hasValue && hasItems && Array.isArray(item.items)) {
-          console.log('DetailView.getItemData: Detected group header', { 
-            value: item.value, 
-            itemsCount: item.items.length,
-            itemKeys 
-          });
+        // Group headers in Vuetify have a 'depth' property - this is the most reliable check
+        if (item.depth !== undefined) {
           return null;
         }
         
-        // In Vuetify grouped tables, the actual data row is usually in item.raw
-        // But check item directly first in case it's not wrapped
+        // Extract data - could be in item, item.raw, or item.item
         let data = item;
-        
-        // Check if item.raw exists and is not a group header
-        if (hasRaw && typeof item.raw === 'object') {
-          // Make sure it's not a group header
-          if (!item.raw.items || !Array.isArray(item.raw.items)) {
-            data = item.raw;
-            console.log('DetailView.getItemData: Using item.raw', { 
-              rawKeys: Object.keys(item.raw),
-              hasValue: item.raw.value !== undefined,
-              hasExpression: item.raw.expression_string !== undefined
-            });
-          } else {
-            console.log('DetailView.getItemData: item.raw is a group header, using item directly');
-          }
+        if (item.raw && typeof item.raw === 'object' && item.raw.depth === undefined) {
+          data = item.raw;
+        } else if (item.item && typeof item.item === 'object' && item.item.depth === undefined) {
+          data = item.item;
         }
         
-        // Final check - make sure we have a valid data object with expected properties
-        if (data && typeof data === 'object') {
-          // Check if it has at least one property that suggests it's actual data
-          const hasDataValue = data.value !== undefined;
-          const hasTemperature = data.temperature !== undefined;
-          const hasExpression = data.expression_string !== undefined;
-          
-          if (hasDataValue || hasTemperature || hasExpression) {
-            console.log('DetailView.getItemData: Valid data object found', {
-              hasValue: hasDataValue,
-              hasTemperature,
-              hasExpression,
-              allKeys: Object.keys(data)
-            });
-            return data;
-          } else {
-            console.warn('DetailView.getItemData: Data object missing expected properties', {
-              itemKeys,
-              dataKeys: Object.keys(data),
-              itemType,
-              hasRaw,
-              itemStructure: JSON.stringify(item, null, 2)
-            });
-          }
-        } else {
-          console.warn('DetailView.getItemData: Data is not a valid object', {
-            data,
-            dataType: typeof data,
-            itemKeys,
-            itemType
-          });
+        // CRITICAL: Only return data if it has properties that ONLY data items have
+        // Group headers won't have these properties
+        const hasExpression = data.expression_string !== undefined;
+        const hasConstantKind = data.constant_kind !== undefined;
+        const hasTemperature = data.temperature !== undefined;
+        const hasValue = data.value !== undefined && typeof data.value === 'number';
+        
+        // Must have at least one of these to be a valid data item
+        if (hasExpression || hasConstantKind || hasTemperature || hasValue) {
+          return data;
         }
         
+        // If it has 'items' array but no data properties, it's definitely a group header
+        if (data.items && Array.isArray(data.items)) {
+          return null;
+        }
+        
+        // Log when we can't identify the item - this is the critical diagnostic info
+        console.error('DetailView.getItemData: UNKNOWN ITEM TYPE - cannot determine if group header or data', {
+          itemKeys: Object.keys(item),
+          itemType: typeof item,
+          hasRaw: !!item.raw,
+          hasItem: !!item.item,
+          hasDepth: item.depth !== undefined,
+          hasItems: !!item.items,
+          dataKeys: Object.keys(data),
+          dataHasExpression: hasExpression,
+          dataHasConstantKind: hasConstantKind,
+          dataHasTemperature: hasTemperature,
+          dataHasValue: hasValue,
+          fullItem: JSON.stringify(item, null, 2).substring(0, 500) // Limit to first 500 chars
+        });
+        
+        // Otherwise, not a valid data item
         return null;
       } catch (error) {
-        console.error('DetailView.getItemData: Error processing item', error, {
-          item,
-          itemType: typeof item,
-          itemKeys: item ? Object.keys(item) : []
+        console.error('DetailView.getItemData: EXCEPTION', error, {
+          item: item ? Object.keys(item) : 'null',
+          itemType: typeof item
         });
         return null;
       }
@@ -658,28 +633,36 @@ export default defineComponent({
     safeGet(item: any, property: string, fallback: any = null): any {
       try {
         const data = this.getItemData(item);
-        if (!data) return fallback;
-        return data[property] !== undefined ? data[property] : fallback;
+        if (!data || typeof data !== 'object') {
+          // Log when safeGet is called but getItemData returns null/undefined
+          // This happens when templates try to access properties on group headers
+          console.warn(`DetailView.safeGet: getItemData returned null/undefined for property '${property}'`, {
+            itemKeys: item ? Object.keys(item) : 'null',
+            itemType: typeof item,
+            itemHasDepth: item?.depth !== undefined,
+            itemHasRaw: !!item?.raw,
+            property
+          });
+          return fallback;
+        }
+        const value = data[property];
+        // Return fallback for null, undefined, or if property doesn't exist
+        return value !== undefined && value !== null ? value : fallback;
       } catch (error) {
-        console.error(`DetailView.safeGet: Error accessing property ${property}`, error, { item, property });
+        console.error(`DetailView.safeGet: EXCEPTION accessing property '${property}'`, error, { 
+          item: item ? Object.keys(item) : 'null',
+          itemType: typeof item,
+          property 
+        });
         return fallback;
       }
     },
     getItemDataCached(item: any): any {
-      // Cache the result to avoid multiple calls
-      // This is a simple cache that works per call - Vue will handle reactivity
+      // Always return null (never undefined) for consistency
       try {
         const data = this.getItemData(item);
-        if (!data) {
-          console.warn('DetailView.getItemDataCached: getItemData returned null/undefined', {
-            item,
-            itemType: typeof item,
-            itemKeys: item ? Object.keys(item) : []
-          });
-        }
-        return data;
+        return data ? data : null;
       } catch (error) {
-        console.error('DetailView.getItemDataCached: Error', error, { item });
         return null;
       }
     },
@@ -909,45 +892,24 @@ export default defineComponent({
           this.originalData = result;
           this.constants = filteredData;
 
-          // Comprehensive logging to understand the data structure
-          console.log("DetailView.loadConstants: Data loaded", {
-            totalResults: result.length,
-            filteredCount: filteredData.length,
-            originalDataLength: this.originalData.length,
-            constantsArrayLength: this.constants.length
-          });
-          
+          // Only log if there's a problem with data structure
           if (filteredData.length > 0) {
             const firstItem = filteredData[0];
-            console.log("DetailView.loadConstants: First item structure", {
-              item: firstItem,
-              itemType: typeof firstItem,
-              itemKeys: Object.keys(firstItem),
-              hasValue: firstItem.value !== undefined,
-              hasExpression: firstItem.expression_string !== undefined,
-              hasTemperature: firstItem.temperature !== undefined,
-              hasConstantKind: firstItem.constant_kind !== undefined,
-              fullItem: JSON.stringify(firstItem, null, 2)
-            });
-            
-            // Check if items are plain objects or have special structure
-            console.log("DetailView.loadConstants: Sample items structure check", {
-              item0: filteredData[0],
-              item0HasRaw: filteredData[0]?.raw !== undefined,
-              item0HasItems: filteredData[0]?.items !== undefined,
-              item0HasValue: filteredData[0]?.value !== undefined,
-              constantsArrayType: Array.isArray(this.constants),
-              constantsArrayFirstType: typeof this.constants[0]
-            });
-          } else {
-            console.warn("DetailView.loadConstants: No filtered data, but result has", result.length, "items");
-            if (result.length > 0) {
-              console.log("DetailView.loadConstants: First unfiltered item", {
-                item: result[0],
-                itemKeys: Object.keys(result[0]),
-                whyFiltered: result[0].expression_string === undefined ? "missing expression_string" : "in unbalanced list"
+            // Check if item has unexpected structure (like raw, items, depth - these shouldn't be in raw data)
+            if (firstItem.raw !== undefined || firstItem.items !== undefined || firstItem.depth !== undefined) {
+              console.error("DetailView.loadConstants: UNEXPECTED - Raw data has Vuetify wrapper properties!", {
+                itemKeys: Object.keys(firstItem),
+                hasRaw: !!firstItem.raw,
+                hasItems: !!firstItem.items,
+                hasDepth: firstItem.depth !== undefined,
+                firstItem: JSON.stringify(firstItem, null, 2).substring(0, 500)
               });
             }
+          } else if (result.length > 0) {
+            console.warn("DetailView.loadConstants: All items filtered out", {
+              totalResults: result.length,
+              firstItemKeys: Object.keys(result[0])
+            });
           }
 
           // Start with NO grouping - show flat table so all data is visible and clear
@@ -1170,6 +1132,26 @@ export default defineComponent({
 
     this.isLoading = true;
 
+    // Add global error handler to catch any TypeErrors that slip through
+    const originalErrorHandler = window.onerror;
+    window.onerror = (message, source, lineno, colno, error) => {
+      if (message && typeof message === 'string' && message.includes('Cannot read properties of undefined')) {
+        console.error('DetailView: CAUGHT GLOBAL TypeError - This should not happen with safeGet', {
+          message,
+          source,
+          lineno,
+          colno,
+          error,
+          constantsLength: this.constants?.length,
+          constantsFirstItem: this.constants?.[0] ? Object.keys(this.constants[0]) : null
+        });
+      }
+      if (originalErrorHandler) {
+        return originalErrorHandler(message, source, lineno, colno, error);
+      }
+      return false;
+    };
+
     this.loadConstants();
     this.loadMolData();
     this.loadReferences();
@@ -1177,28 +1159,19 @@ export default defineComponent({
   watch: {
     constants: {
       handler(newVal: any[], oldVal: any[]) {
-        console.log('DetailView.constants watcher: Array changed', {
-          newLength: newVal?.length,
-          oldLength: oldVal?.length,
-          isArray: Array.isArray(newVal),
-          firstItem: newVal?.[0],
-          firstItemType: typeof newVal?.[0],
-          firstItemKeys: newVal?.[0] ? Object.keys(newVal[0]) : [],
-          firstItemHasRaw: newVal?.[0]?.raw !== undefined,
-          firstItemHasItems: newVal?.[0]?.items !== undefined
-        });
-        
-        // Log a few sample items to understand structure
+        // Only log if there's an issue - check if items have unexpected structure
         if (newVal && newVal.length > 0) {
-          for (let i = 0; i < Math.min(3, newVal.length); i++) {
-            const item = newVal[i];
-            const itemData = this.getItemData(item);
-            console.log(`DetailView.constants watcher: Item ${i}`, {
-              rawItem: item,
-              extractedData: itemData,
-              itemType: typeof item,
-              itemKeys: item ? Object.keys(item) : [],
-              dataKeys: itemData ? Object.keys(itemData) : []
+          const firstItem = newVal[0];
+          const firstItemData = this.getItemData(firstItem);
+          
+          // Log if first item can't be processed (might indicate structure issue)
+          if (!firstItemData && firstItem) {
+            console.warn('DetailView.constants watcher: First item cannot be processed', {
+              itemKeys: Object.keys(firstItem),
+              hasDepth: firstItem.depth !== undefined,
+              hasRaw: !!firstItem.raw,
+              hasItems: !!firstItem.items,
+              itemType: typeof firstItem
             });
           }
         }
