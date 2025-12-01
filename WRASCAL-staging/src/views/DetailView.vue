@@ -261,76 +261,91 @@
           </tr>
         </template>
         <template v-slot:expanded-row="{ columns, item }">
-          <tr>
+          <tr v-if="getItemData(item)">
             <td :colspan="columns.length" class="text-left">
               <v-chip class="ma-2" color="primary" label text-color="white">
                 <v-icon start icon="mdi-note-text-outline"></v-icon>
                 FootNote:
                 <div
                   class="ml-2"
-                  v-html="getFootNote((item.raw || item).legacy_identifier) ?? 'None'"
+                  v-html="getFootNote(getItemData(item)?.legacy_identifier) ?? 'None'"
                 ></div>
               </v-chip>
             </td>
           </tr>
         </template>
         <template v-slot:[`item.constant_kind`]="{ item }">
-          <v-chip v-if="(item.raw || item).constant_kind" :color="getConstantKindBadgeColor((item.raw || item).constant_kind)">
-            <div
-              class="no-katex-html"
-              v-html="getFormattedConstantKind((item.raw || item).constant_kind)"
-            ></div>
-          </v-chip>
+          <template v-if="getItemData(item)">
+            <v-chip v-if="getItemData(item)?.constant_kind" :color="getConstantKindBadgeColor(getItemData(item)!.constant_kind)">
+              <div
+                class="no-katex-html"
+                v-html="getFormattedConstantKind(getItemData(item)!.constant_kind)"
+              ></div>
+            </v-chip>
+            <span v-else>-</span>
+          </template>
           <span v-else>-</span>
         </template>
         <template v-slot:[`item.expression_string`]="{ item }">
-          <div
-            v-if="(item.raw || item).expression_string"
-            class="no-katex-html"
-            v-html="convertExpressionToLatex((item.raw || item).expression_string)"
-          ></div>
+          <template v-if="getItemData(item)">
+            <div
+              v-if="getItemData(item)?.expression_string"
+              class="no-katex-html"
+              v-html="convertExpressionToLatex(getItemData(item)!.expression_string)"
+            ></div>
+            <span v-else>-</span>
+          </template>
           <span v-else>-</span>
         </template>
         <template v-slot:[`item.temperature`]="{ item }">
-          <div>
-            {{ ((item.raw || item).temperature !== undefined && (item.raw || item).temperature !== null)
-              ? (item.raw || item).temperature + ((item.raw || item).temperature_varies ? ' (varies)' : '') + ' °C'
-              : '-' }}
-          </div>
+          <template v-if="getItemData(item)">
+            <div>
+              {{ (getItemData(item)!.temperature !== undefined && getItemData(item)!.temperature !== null)
+                ? getItemData(item)!.temperature + (getItemData(item)!.temperature_varies ? ' (varies)' : '') + ' °C'
+                : '-' }}
+            </div>
+          </template>
+          <span v-else>-</span>
         </template>
         <template v-slot:[`item.ionic_strength`]="{ item }">
-          <div>
-            {{ ((item.raw || item).ionic_strength !== undefined && (item.raw || item).ionic_strength !== null)
-              ? (item.raw || item).ionic_strength + ' M'
-              : '-' }}
-          </div>
+          <template v-if="getItemData(item)">
+            <div>
+              {{ (getItemData(item)!.ionic_strength !== undefined && getItemData(item)!.ionic_strength !== null)
+                ? getItemData(item)!.ionic_strength + ' M'
+                : '-' }}
+            </div>
+          </template>
+          <span v-else>-</span>
         </template>
         <template v-slot:[`item.value`]="{ item }">
-          <div style="min-width: 150px" class="d-flex align-center">
-            <div
-              class="no-katex-html pl-3 pr-3"
-              v-html="
-                convertValueWithUncertaintyToLatex1(
-                  (item.raw || item).value,
-                  (item.raw || item).magnitude,
-                  (item.raw || item).direction,
-                  (item.raw || item).constant_kind
-                )
-              "
-            ></div>
-            <div
-              v-if="(item.raw || item).constant_kind !== 'Equilibrium'"
-              class="no-katex-html pl-3 pr-3"
-              v-html="
-                convertValueWithUncertaintyToLatex2(
-                  (item.raw || item).value,
-                  (item.raw || item).magnitude,
-                  (item.raw || item).direction,
-                  (item.raw || item).constant_kind
-                )
-              "
-            ></div>
-          </div>
+          <template v-if="getItemData(item)">
+            <div style="min-width: 150px" class="d-flex align-center">
+              <div
+                class="no-katex-html pl-3 pr-3"
+                v-html="
+                  convertValueWithUncertaintyToLatex1(
+                    getItemData(item)!.value,
+                    getItemData(item)!.magnitude,
+                    getItemData(item)!.direction,
+                    getItemData(item)!.constant_kind
+                  )
+                "
+              ></div>
+              <div
+                v-if="getItemData(item)!.constant_kind !== 'Equilibrium'"
+                class="no-katex-html pl-3 pr-3"
+                v-html="
+                  convertValueWithUncertaintyToLatex2(
+                    getItemData(item)!.value,
+                    getItemData(item)!.magnitude,
+                    getItemData(item)!.direction,
+                    getItemData(item)!.constant_kind
+                  )
+                "
+              ></div>
+            </div>
+          </template>
+          <span v-else>-</span>
         </template>
       </v-data-table>
 
@@ -554,35 +569,101 @@ export default defineComponent({
       this.$router.go(-1);
     },
     getItemData(item: any): any {
-      // In grouped tables, data might be in item.raw or item directly
-      if (!item) return null;
-      
-      // If it's a group header (has value and items), return null
-      if (item.value !== undefined && item.items !== undefined && Array.isArray(item.items)) {
+      try {
+        // Log the item structure for debugging
+        if (!item) {
+          console.warn('DetailView.getItemData: item is null or undefined');
+          return null;
+        }
+        
+        // Log item structure when it's unexpected
+        const hasValue = item.value !== undefined;
+        const hasItems = item.items !== undefined;
+        const hasRaw = item.raw !== undefined;
+        const itemType = typeof item;
+        const itemKeys = item ? Object.keys(item) : [];
+        
+        // If it's a group header (has value and items), return null
+        if (hasValue && hasItems && Array.isArray(item.items)) {
+          console.log('DetailView.getItemData: Detected group header', { 
+            value: item.value, 
+            itemsCount: item.items.length,
+            itemKeys 
+          });
+          return null;
+        }
+        
+        // In Vuetify grouped tables, the actual data row is usually in item.raw
+        // But check item directly first in case it's not wrapped
+        let data = item;
+        
+        // Check if item.raw exists and is not a group header
+        if (hasRaw && typeof item.raw === 'object') {
+          // Make sure it's not a group header
+          if (!item.raw.items || !Array.isArray(item.raw.items)) {
+            data = item.raw;
+            console.log('DetailView.getItemData: Using item.raw', { 
+              rawKeys: Object.keys(item.raw),
+              hasValue: item.raw.value !== undefined,
+              hasExpression: item.raw.expression_string !== undefined
+            });
+          } else {
+            console.log('DetailView.getItemData: item.raw is a group header, using item directly');
+          }
+        }
+        
+        // Final check - make sure we have a valid data object with expected properties
+        if (data && typeof data === 'object') {
+          // Check if it has at least one property that suggests it's actual data
+          const hasDataValue = data.value !== undefined;
+          const hasTemperature = data.temperature !== undefined;
+          const hasExpression = data.expression_string !== undefined;
+          
+          if (hasDataValue || hasTemperature || hasExpression) {
+            console.log('DetailView.getItemData: Valid data object found', {
+              hasValue: hasDataValue,
+              hasTemperature,
+              hasExpression,
+              allKeys: Object.keys(data)
+            });
+            return data;
+          } else {
+            console.warn('DetailView.getItemData: Data object missing expected properties', {
+              itemKeys,
+              dataKeys: Object.keys(data),
+              itemType,
+              hasRaw,
+              itemStructure: JSON.stringify(item, null, 2)
+            });
+          }
+        } else {
+          console.warn('DetailView.getItemData: Data is not a valid object', {
+            data,
+            dataType: typeof data,
+            itemKeys,
+            itemType
+          });
+        }
+        
+        return null;
+      } catch (error) {
+        console.error('DetailView.getItemData: Error processing item', error, {
+          item,
+          itemType: typeof item,
+          itemKeys: item ? Object.keys(item) : []
+        });
         return null;
       }
-      
-      // In Vuetify grouped tables, the actual data row is usually in item.raw
-      // But check item directly first in case it's not wrapped
-      let data = item;
-      
-      // Check if item.raw exists and is not a group header
-      if (item.raw && typeof item.raw === 'object') {
-        // Make sure it's not a group header
-        if (!item.raw.items || !Array.isArray(item.raw.items)) {
-          data = item.raw;
-        }
+    },
+    safeGet(item: any, property: string, fallback: any = null): any {
+      try {
+        const data = this.getItemData(item);
+        if (!data) return fallback;
+        return data[property] !== undefined ? data[property] : fallback;
+      } catch (error) {
+        console.error(`DetailView.safeGet: Error accessing property ${property}`, error, { item, property });
+        return fallback;
       }
-      
-      // Final check - make sure we have a valid data object with expected properties
-      if (data && typeof data === 'object') {
-        // Check if it has at least one property that suggests it's actual data
-        if (data.value !== undefined || data.temperature !== undefined || data.expression_string !== undefined) {
-          return data;
-        }
-      }
-      
-      return null;
     },
     getFormattedConstantKind(kind?: string) {
       if (!kind) return "-";
@@ -810,11 +891,45 @@ export default defineComponent({
           this.originalData = result;
           this.constants = filteredData;
 
-          // Log the actual data structure to debug
-          console.log("DetailView: constants data loaded", filteredData.length, "items");
+          // Comprehensive logging to understand the data structure
+          console.log("DetailView.loadConstants: Data loaded", {
+            totalResults: result.length,
+            filteredCount: filteredData.length,
+            originalDataLength: this.originalData.length,
+            constantsArrayLength: this.constants.length
+          });
+          
           if (filteredData.length > 0) {
-            console.log("DetailView: First constant item structure:", JSON.stringify(filteredData[0], null, 2));
-            console.log("DetailView: First constant item keys:", Object.keys(filteredData[0]));
+            const firstItem = filteredData[0];
+            console.log("DetailView.loadConstants: First item structure", {
+              item: firstItem,
+              itemType: typeof firstItem,
+              itemKeys: Object.keys(firstItem),
+              hasValue: firstItem.value !== undefined,
+              hasExpression: firstItem.expression_string !== undefined,
+              hasTemperature: firstItem.temperature !== undefined,
+              hasConstantKind: firstItem.constant_kind !== undefined,
+              fullItem: JSON.stringify(firstItem, null, 2)
+            });
+            
+            // Check if items are plain objects or have special structure
+            console.log("DetailView.loadConstants: Sample items structure check", {
+              item0: filteredData[0],
+              item0HasRaw: filteredData[0]?.raw !== undefined,
+              item0HasItems: filteredData[0]?.items !== undefined,
+              item0HasValue: filteredData[0]?.value !== undefined,
+              constantsArrayType: Array.isArray(this.constants),
+              constantsArrayFirstType: typeof this.constants[0]
+            });
+          } else {
+            console.warn("DetailView.loadConstants: No filtered data, but result has", result.length, "items");
+            if (result.length > 0) {
+              console.log("DetailView.loadConstants: First unfiltered item", {
+                item: result[0],
+                itemKeys: Object.keys(result[0]),
+                whyFiltered: result[0].expression_string === undefined ? "missing expression_string" : "in unbalanced list"
+              });
+            }
           }
 
           // Start with NO grouping - show flat table so all data is visible and clear
@@ -1040,6 +1155,39 @@ export default defineComponent({
     this.loadConstants();
     this.loadMolData();
     this.loadReferences();
+  },
+  watch: {
+    constants: {
+      handler(newVal: any[], oldVal: any[]) {
+        console.log('DetailView.constants watcher: Array changed', {
+          newLength: newVal?.length,
+          oldLength: oldVal?.length,
+          isArray: Array.isArray(newVal),
+          firstItem: newVal?.[0],
+          firstItemType: typeof newVal?.[0],
+          firstItemKeys: newVal?.[0] ? Object.keys(newVal[0]) : [],
+          firstItemHasRaw: newVal?.[0]?.raw !== undefined,
+          firstItemHasItems: newVal?.[0]?.items !== undefined
+        });
+        
+        // Log a few sample items to understand structure
+        if (newVal && newVal.length > 0) {
+          for (let i = 0; i < Math.min(3, newVal.length); i++) {
+            const item = newVal[i];
+            const itemData = this.getItemData(item);
+            console.log(`DetailView.constants watcher: Item ${i}`, {
+              rawItem: item,
+              extractedData: itemData,
+              itemType: typeof item,
+              itemKeys: item ? Object.keys(item) : [],
+              dataKeys: itemData ? Object.keys(itemData) : []
+            });
+          }
+        }
+      },
+      immediate: true,
+      deep: true
+    }
   },
   computed: {
     molViewStyle(): string {
