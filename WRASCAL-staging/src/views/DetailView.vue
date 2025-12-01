@@ -570,17 +570,28 @@ export default defineComponent({
       if (!item) return null;
       
       // If it's a group header (has value and items), return null
-      if (item.value !== undefined && item.items !== undefined) {
+      if (item.value !== undefined && item.items !== undefined && Array.isArray(item.items)) {
         return null;
       }
       
-      // Try to get the actual data - in Vuetify grouped tables, data is usually in item.raw
-      // But sometimes it's directly on item if not grouped
-      const data = item.raw || item;
+      // In Vuetify grouped tables, the actual data row is usually in item.raw
+      // But check item directly first in case it's not wrapped
+      let data = item;
       
-      // Make sure we have a valid data object (not a group header)
-      if (data && typeof data === 'object' && !data.items) {
-        return data;
+      // Check if item.raw exists and is not a group header
+      if (item.raw && typeof item.raw === 'object') {
+        // Make sure it's not a group header
+        if (!item.raw.items || !Array.isArray(item.raw.items)) {
+          data = item.raw;
+        }
+      }
+      
+      // Final check - make sure we have a valid data object with expected properties
+      if (data && typeof data === 'object') {
+        // Check if it has at least one property that suggests it's actual data
+        if (data.value !== undefined || data.temperature !== undefined || data.expression_string !== undefined) {
+          return data;
+        }
       }
       
       return null;
