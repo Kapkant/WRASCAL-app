@@ -820,15 +820,13 @@ export default defineComponent({
           this.originalData = result;
           this.constants = filteredData;
 
-          // Start with just expression_string grouping to avoid confusion
-          this.groupBy = [
-            { key: "expression_string" },
-          ];
+          // Start with NO grouping - show flat table so all data is visible and clear
+          this.groupBy = [];
           this.groupKeys = [
             {
               key: "expression_string",
               name: "Expression",
-              isChecked: true,
+              isChecked: false,
             },
             {
               key: "constant_kind",
