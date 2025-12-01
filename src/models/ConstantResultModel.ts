@@ -106,11 +106,35 @@ export class ConstantResultModel extends ConstantResultModelBase {
     result.magnitude = raw.magnitude;
     result.protonation = raw.protonation;
 
-    result.molecular_formula = MolecularFormula.fromStr(raw.molecular_formula);
-    result.products = toExpressionArray(raw.products);
-    result.reactants = toExpressionArray(raw.reactants);
-    result.notes = toNoteArray(raw.notes);
-    result.legacy_identifier = raw.legacy_identifier;
+    try {
+      result.molecular_formula = raw.molecular_formula ? MolecularFormula.fromStr(raw.molecular_formula) : new MolecularFormula();
+    } catch (e) {
+      console.error("Error parsing molecular_formula:", raw.molecular_formula, e);
+      result.molecular_formula = new MolecularFormula();
+    }
+    
+    try {
+      result.products = raw.products ? toExpressionArray(raw.products) : [];
+    } catch (e) {
+      console.error("Error parsing products:", raw.products, e);
+      result.products = [];
+    }
+    
+    try {
+      result.reactants = raw.reactants ? toExpressionArray(raw.reactants) : [];
+    } catch (e) {
+      console.error("Error parsing reactants:", raw.reactants, e);
+      result.reactants = [];
+    }
+    
+    try {
+      result.notes = raw.notes ? toNoteArray(raw.notes) : [];
+    } catch (e) {
+      console.error("Error parsing notes:", raw.notes, e);
+      result.notes = [];
+    }
+    
+    result.legacy_identifier = raw.legacy_identifier || "";
 
     return result;
   }

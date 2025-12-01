@@ -256,6 +256,15 @@ export default defineComponent({
     expandedRows: {
       handler(newVal: any[], oldVal: any[]) {
         console.log('expandedRows changed:', newVal.length, 'rows expanded');
+        console.log('expandedRows items:', newVal.map(r => ({ 
+          type: typeof r, 
+          keys: r ? Object.keys(r) : null,
+          raw: r?.raw,
+          item: r?.item,
+          name: r?.name || r?.raw?.name || r?.item?.name,
+          ligand_id: r?.ligand_id || r?.raw?.ligand_id || r?.item?.ligand_id,
+          metal_id: r?.metal_id || r?.raw?.metal_id || r?.item?.metal_id
+        })));
         // When a row is expanded, load constants if not already loaded
         for (const row of newVal) {
           if (row) {
@@ -268,7 +277,7 @@ export default defineComponent({
                 this.loadConstants(itemData);
               }
             } else {
-              console.log('Row expanded but item missing required IDs:', itemData);
+              console.log('Row expanded but item missing required IDs. itemData:', itemData, 'row:', row);
             }
           }
         }
@@ -293,11 +302,14 @@ export default defineComponent({
     getItemData(item: any): LigandSearchResultModel | null {
       // In grouped tables, item might be the data directly or wrapped in item.raw
       // Also check for item.item which is sometimes used in Vuetify data tables
+      console.log('getItemData called with item:', item, 'type:', typeof item, 'keys:', item ? Object.keys(item) : 'null');
       const data = item?.raw || item?.item || item;
+      console.log('getItemData extracted data:', data, 'has ligand_id:', data?.ligand_id, 'has metal_id:', data?.metal_id);
       // Validate that we have a proper data object with required fields
       if (data && typeof data === 'object' && (data.ligand_id !== undefined || data.metal_id !== undefined)) {
         return data;
       }
+      console.warn('getItemData: Could not extract valid data from item');
       return null;
     },
     getMetalKey(item: LigandSearchResultModel): string {

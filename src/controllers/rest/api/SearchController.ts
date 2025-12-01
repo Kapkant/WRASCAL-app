@@ -197,21 +197,19 @@ export class SearchController {
         .getRepository(Constant)
         .createQueryBuilder("constants")
         .distinct(true)
-        .select([
-          "ligands.name",
-          "ligands.molecular_formula",
-          "constants.value",
-          "constants.significant_figures",
-          "ligands.categories",
-          "metals.central_element",
-          "conditions.constant_kind",
-          "conditions.temperature",
-          "conditions.temperature_varies",
-          "conditions.ionic_strength",
-          "equilibrium_expressions.expression_string",
-          "equilibrium_expressions.products",
-          "equilibrium_expressions.reactants"
-        ])
+        .addSelect("ligands.name", "name")
+        .addSelect("ligands.molecular_formula", "molecular_formula")
+        .addSelect("constants.value", "value")
+        .addSelect("constants.significant_figures", "significant_figures")
+        .addSelect("ligands.categories", "categories")
+        .addSelect("metals.central_element", "central_element")
+        .addSelect("conditions.constant_kind", "constant_kind")
+        .addSelect("conditions.temperature", "temperature")
+        .addSelect("conditions.temperature_varies", "temperature_varies")
+        .addSelect("conditions.ionic_strength", "ionic_strength")
+        .addSelect("equilibrium_expressions.expression_string", "expression_string")
+        .addSelect("equilibrium_expressions.products", "products")
+        .addSelect("equilibrium_expressions.reactants", "reactants")
         .addSelect("footnotes.legacy_identifier", "legacy_identifier")
         .addSelect("footnotes.notes", "notes")
         .addSelect("uncertainties.direction", "direction")
@@ -230,11 +228,19 @@ export class SearchController {
         .getRawMany<ConstantResultRawModel>();
 
       console.log("getConstants query returned", resultRaw?.length || 0, "results");
+      if (resultRaw && resultRaw.length > 0) {
+        console.log("First raw result sample:", JSON.stringify(resultRaw[0]));
+      }
 
       const result: ConstantResultModel[] = [];
 
-      resultRaw.forEach((r) => {
-        result.push(ConstantResultModel.fromRaw(r));
+      resultRaw.forEach((r, index) => {
+        try {
+          result.push(ConstantResultModel.fromRaw(r));
+        } catch (error) {
+          console.error(`Error processing result at index ${index}:`, error, "Raw data:", JSON.stringify(r));
+          // Continue processing other results even if one fails
+        }
       });
 
       console.log("getConstants returning", result.length, "processed results");
