@@ -210,12 +210,12 @@ export class SearchController {
           "conditions.ionic_strength",
           "equilibrium_expressions.expression_string",
           "equilibrium_expressions.products",
-          "equilibrium_expressions.reactants",
-          "equilibrium_expressions.notes",
-          "equilibrium_expressions.direction",
-          "equilibrium_expressions.magnitude"
+          "equilibrium_expressions.reactants"
         ])
         .addSelect("footnotes.legacy_identifier", "legacy_identifier")
+        .addSelect("footnotes.notes", "notes")
+        .addSelect("uncertainties.direction", "direction")
+        .addSelect("uncertainties.magnitude", "magnitude")
         .addSelect("ligands.charge", "ligand_charge")
         .addSelect("(ligands.form).protonation", "protonation")
         .addSelect("metals.charge", "metal_charge")
