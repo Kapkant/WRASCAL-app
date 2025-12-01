@@ -260,13 +260,15 @@ export default defineComponent({
         for (const row of newVal) {
           if (row) {
             const itemData = this.getItemData(row);
-            if (itemData) {
+            if (itemData && itemData.ligand_id && itemData.metal_id) {
               const metalKey = this.getMetalKey(itemData);
               console.log('Row expanded, metalKey:', metalKey, 'hasData:', !!this.constantsData[metalKey]);
               if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
                 console.log('Loading constants for', metalKey);
                 this.loadConstants(itemData);
               }
+            } else {
+              console.log('Row expanded but item missing required IDs:', itemData);
             }
           }
         }
@@ -288,14 +290,27 @@ export default defineComponent({
 
       this.groupBy = temp
     },
-    getItemData(item: any): LigandSearchResultModel {
+    getItemData(item: any): LigandSearchResultModel | null {
       // In grouped tables, item might be the data directly or wrapped in item.raw
-      return item?.raw || item;
+      // Also check for item.item which is sometimes used in Vuetify data tables
+      const data = item?.raw || item?.item || item;
+      // Validate that we have a proper data object with required fields
+      if (data && typeof data === 'object' && (data.ligand_id !== undefined || data.metal_id !== undefined)) {
+        return data;
+      }
+      return null;
     },
     getMetalKey(item: LigandSearchResultModel): string {
       return `${item.central_element}_${item.metal_id}_${item.ligand_id}`;
     },
     async loadConstants(item: LigandSearchResultModel) {
+      // Validate that item has required IDs
+      if (!item || item.ligand_id === undefined || item.ligand_id === null || 
+          item.metal_id === undefined || item.metal_id === null) {
+        console.error('loadConstants called with invalid item:', item);
+        return;
+      }
+
       const metalKey = this.getMetalKey(item);
       console.log('loadConstants called for', metalKey, 'item:', item);
       

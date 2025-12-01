@@ -160,6 +160,14 @@ export class SearchController {
       throw new BadRequest("Database not available - service is in offline mode");
     }
 
+    // Validate required parameters
+    if (constReq.ligandId === undefined || constReq.ligandId === null || isNaN(Number(constReq.ligandId))) {
+      throw new BadRequest("Invalid or missing ligandId parameter");
+    }
+    if (constReq.metalId === undefined || constReq.metalId === null || isNaN(Number(constReq.metalId))) {
+      throw new BadRequest("Invalid or missing metalId parameter");
+    }
+
     try {
       console.log("getConstants called with:", { ligandId: constReq.ligandId, metalId: constReq.metalId });
 
