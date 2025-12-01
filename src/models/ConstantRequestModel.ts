@@ -11,8 +11,8 @@ export class ConstantRequestModel {
 }
 
 export const ConstantRequestSchema = object({
-  ligandId: number().description("Unique ID of the ligand"),
-  metalId: number().description("Unique ID of the metal")
+  ligandId: number().description("Unique ID of the ligand").examples([414, 574]),
+  metalId: number().description("Unique ID of the metal").examples([59, 134])
 });
 
 export const ConstantRequestExample = new ConstantRequestModel(414, 59);

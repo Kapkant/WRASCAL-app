@@ -151,25 +151,47 @@ export class SearchController {
   @Summary("Get details based on ids of metal and ligand")
   @Description("Get details based on ids of metal and ligand, returns an array of results.")
   async getConstants(
-    @BodyParams()
-    @Schema(ConstantRequestSchema)
-    @Example(ConstantRequestExample)
-    constReq: ConstantRequestModel
+    @BodyParams() constReq: any
   ): Promise<ConstantResultModel[]> {
     if (!this.dataSource) {
       throw new BadRequest("Database not available - service is in offline mode");
     }
 
-    // Validate required parameters
-    if (constReq.ligandId === undefined || constReq.ligandId === null || isNaN(Number(constReq.ligandId))) {
-      throw new BadRequest("Invalid or missing ligandId parameter");
-    }
-    if (constReq.metalId === undefined || constReq.metalId === null || isNaN(Number(constReq.metalId))) {
-      throw new BadRequest("Invalid or missing metalId parameter");
-    }
-
     try {
-      console.log("getConstants called with:", { ligandId: constReq.ligandId, metalId: constReq.metalId });
+      // Log the raw request object to debug
+      console.log("getConstants called with:", { 
+        ligandId: constReq?.ligandId, 
+        metalId: constReq?.metalId, 
+        types: { ligandId: typeof constReq?.ligandId, metalId: typeof constReq?.metalId },
+        fullRequest: JSON.stringify(constReq)
+      });
+      
+      // Handle case where constReq might be undefined or malformed
+      if (!constReq) {
+        console.error("getConstants: constReq is undefined or null");
+        throw new BadRequest("Request body is missing or invalid");
+      }
+
+      // Extract and convert to numbers - handle both object and direct property access
+      const ligandIdRaw = constReq.ligandId !== undefined ? constReq.ligandId : (constReq?.ligand_id !== undefined ? constReq.ligand_id : null);
+      const metalIdRaw = constReq.metalId !== undefined ? constReq.metalId : (constReq?.metal_id !== undefined ? constReq.metal_id : null);
+      
+      console.log("Extracted raw values:", { ligandIdRaw, metalIdRaw, ligandIdRawType: typeof ligandIdRaw, metalIdRawType: typeof metalIdRaw });
+      
+      // Convert to numbers and validate
+      const ligandId = Number(ligandIdRaw);
+      const metalId = Number(metalIdRaw);
+      
+      console.log("Converted values:", { ligandId, metalId, ligandIdIsNaN: isNaN(ligandId), metalIdIsNaN: isNaN(metalId) });
+
+      if (ligandIdRaw === null || ligandIdRaw === undefined || isNaN(ligandId) || ligandId <= 0) {
+        console.error("Invalid ligandId - raw:", ligandIdRaw, "converted:", ligandId, "constReq:", JSON.stringify(constReq));
+        throw new BadRequest(`Invalid or missing ligandId parameter. Received: ${ligandIdRaw} (type: ${typeof ligandIdRaw})`);
+      }
+      if (metalIdRaw === null || metalIdRaw === undefined || isNaN(metalId) || metalId <= 0) {
+        console.error("Invalid metalId - raw:", metalIdRaw, "converted:", metalId, "constReq:", JSON.stringify(constReq));
+        throw new BadRequest(`Invalid or missing metalId parameter. Received: ${metalIdRaw} (type: ${typeof metalIdRaw})`);
+      }
 
       const resultRaw = await this.dataSource!
         .getRepository(Constant)
@@ -203,8 +225,8 @@ export class SearchController {
         .leftJoin("uncertainties", "uncertainties", "uncertainties.id = constants.uncertainty_id")
         .leftJoin("footnotes", "footnotes", "footnotes.id = constants.footnote_id")
         .leftJoin("conditions", "conditions", "conditions.id = constants.conditions_id")
-        .where("constants.ligand_id = :ligandId", { ligandId: constReq.ligandId })
-        .andWhere("constants.metal_id = :metalId", { metalId: constReq.metalId })
+        .where("constants.ligand_id = :ligandId", { ligandId: ligandId })
+        .andWhere("constants.metal_id = :metalId", { metalId: metalId })
         .getRawMany<ConstantResultRawModel>();
 
       console.log("getConstants query returned", resultRaw?.length || 0, "results");

@@ -82,17 +82,28 @@ export async function getConstants(
   ligandId: number,
   metalId: number
 ): Promise<ConstantResultModel[] | null> {
-  const result = await axiosClient.post<ConstantResultModel[]>(
-    "/db/constants",
-    {
-      ligandId: ligandId,
-      metalId: metalId,
+  try {
+    const result = await axiosClient.post<ConstantResultModel[]>(
+      "/db/constants",
+      {
+        ligandId: ligandId,
+        metalId: metalId,
+      },
+      {
+        validateStatus: (status) => status >= 200 && status < 500,
+      }
+    );
+
+    if (result.status !== 200) {
+      console.error("getConstants failed with status:", result.status, result.data);
+      return null;
     }
-  );
 
-  if (result.status !== 200) return null;
-
-  return result.data;
+    return result.data;
+  } catch (error: any) {
+    console.error("getConstants error:", error);
+    throw error;
+  }
 }
 
 export { axiosClient };
