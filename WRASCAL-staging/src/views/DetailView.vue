@@ -261,25 +261,25 @@
           </tr>
         </template>
         <template v-slot:expanded-row="{ columns, item }">
-          <tr v-if="getItemData(item)">
+          <tr v-if="getItemDataCached(item)">
             <td :colspan="columns.length" class="text-left">
               <v-chip class="ma-2" color="primary" label text-color="white">
                 <v-icon start icon="mdi-note-text-outline"></v-icon>
                 FootNote:
                 <div
                   class="ml-2"
-                  v-html="getFootNote(getItemData(item)?.legacy_identifier) ?? 'None'"
+                  v-html="getFootNote(getItemDataCached(item)?.legacy_identifier) ?? 'None'"
                 ></div>
               </v-chip>
             </td>
           </tr>
         </template>
         <template v-slot:[`item.constant_kind`]="{ item }">
-          <template v-if="getItemData(item)">
-            <v-chip v-if="getItemData(item)?.constant_kind" :color="getConstantKindBadgeColor(getItemData(item)!.constant_kind)">
+          <template v-if="getItemDataCached(item)">
+            <v-chip v-if="getItemDataCached(item)?.constant_kind" :color="getConstantKindBadgeColor(getItemDataCached(item)?.constant_kind || '')">
               <div
                 class="no-katex-html"
-                v-html="getFormattedConstantKind(getItemData(item)!.constant_kind)"
+                v-html="getFormattedConstantKind(getItemDataCached(item)?.constant_kind)"
               ></div>
             </v-chip>
             <span v-else>-</span>
@@ -287,59 +287,59 @@
           <span v-else>-</span>
         </template>
         <template v-slot:[`item.expression_string`]="{ item }">
-          <template v-if="getItemData(item)">
+          <template v-if="getItemDataCached(item)">
             <div
-              v-if="getItemData(item)?.expression_string"
+              v-if="getItemDataCached(item)?.expression_string"
               class="no-katex-html"
-              v-html="convertExpressionToLatex(getItemData(item)!.expression_string)"
+              v-html="convertExpressionToLatex(getItemDataCached(item)?.expression_string)"
             ></div>
             <span v-else>-</span>
           </template>
           <span v-else>-</span>
         </template>
         <template v-slot:[`item.temperature`]="{ item }">
-          <template v-if="getItemData(item)">
+          <template v-if="getItemDataCached(item)">
             <div>
-              {{ (getItemData(item)!.temperature !== undefined && getItemData(item)!.temperature !== null)
-                ? getItemData(item)!.temperature + (getItemData(item)!.temperature_varies ? ' (varies)' : '') + ' °C'
+              {{ (getItemDataCached(item)?.temperature !== undefined && getItemDataCached(item)?.temperature !== null)
+                ? getItemDataCached(item)?.temperature + (getItemDataCached(item)?.temperature_varies ? ' (varies)' : '') + ' °C'
                 : '-' }}
             </div>
           </template>
           <span v-else>-</span>
         </template>
         <template v-slot:[`item.ionic_strength`]="{ item }">
-          <template v-if="getItemData(item)">
+          <template v-if="getItemDataCached(item)">
             <div>
-              {{ (getItemData(item)!.ionic_strength !== undefined && getItemData(item)!.ionic_strength !== null)
-                ? getItemData(item)!.ionic_strength + ' M'
+              {{ (getItemDataCached(item)?.ionic_strength !== undefined && getItemDataCached(item)?.ionic_strength !== null)
+                ? getItemDataCached(item)?.ionic_strength + ' M'
                 : '-' }}
             </div>
           </template>
           <span v-else>-</span>
         </template>
         <template v-slot:[`item.value`]="{ item }">
-          <template v-if="getItemData(item)">
+          <template v-if="getItemDataCached(item)">
             <div style="min-width: 150px" class="d-flex align-center">
               <div
                 class="no-katex-html pl-3 pr-3"
                 v-html="
                   convertValueWithUncertaintyToLatex1(
-                    getItemData(item)!.value,
-                    getItemData(item)!.magnitude,
-                    getItemData(item)!.direction,
-                    getItemData(item)!.constant_kind
+                    getItemDataCached(item)?.value,
+                    getItemDataCached(item)?.magnitude,
+                    getItemDataCached(item)?.direction,
+                    getItemDataCached(item)?.constant_kind
                   )
                 "
               ></div>
               <div
-                v-if="getItemData(item)!.constant_kind !== 'Equilibrium'"
+                v-if="getItemDataCached(item)?.constant_kind !== 'Equilibrium'"
                 class="no-katex-html pl-3 pr-3"
                 v-html="
                   convertValueWithUncertaintyToLatex2(
-                    getItemData(item)!.value,
-                    getItemData(item)!.magnitude,
-                    getItemData(item)!.direction,
-                    getItemData(item)!.constant_kind
+                    getItemDataCached(item)?.value,
+                    getItemDataCached(item)?.magnitude,
+                    getItemDataCached(item)?.direction,
+                    getItemDataCached(item)?.constant_kind
                   )
                 "
               ></div>
@@ -663,6 +663,24 @@ export default defineComponent({
       } catch (error) {
         console.error(`DetailView.safeGet: Error accessing property ${property}`, error, { item, property });
         return fallback;
+      }
+    },
+    getItemDataCached(item: any): any {
+      // Cache the result to avoid multiple calls
+      // This is a simple cache that works per call - Vue will handle reactivity
+      try {
+        const data = this.getItemData(item);
+        if (!data) {
+          console.warn('DetailView.getItemDataCached: getItemData returned null/undefined', {
+            item,
+            itemType: typeof item,
+            itemKeys: item ? Object.keys(item) : []
+          });
+        }
+        return data;
+      } catch (error) {
+        console.error('DetailView.getItemDataCached: Error', error, { item });
+        return null;
       }
     },
     getFormattedConstantKind(kind?: string) {
