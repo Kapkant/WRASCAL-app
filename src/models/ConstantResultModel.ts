@@ -107,10 +107,10 @@ export class ConstantResultModel extends ConstantResultModelBase {
     result.protonation = raw.protonation;
 
     try {
-      result.molecular_formula = raw.molecular_formula ? MolecularFormula.fromStr(raw.molecular_formula) : new MolecularFormula();
+      result.molecular_formula = raw.molecular_formula ? MolecularFormula.fromStr(raw.molecular_formula) : new MolecularFormula([], -1);
     } catch (e) {
       console.error("Error parsing molecular_formula:", raw.molecular_formula, e);
-      result.molecular_formula = new MolecularFormula();
+      result.molecular_formula = new MolecularFormula([], -1);
     }
     
     try {
