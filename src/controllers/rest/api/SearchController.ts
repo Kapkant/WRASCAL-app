@@ -194,13 +194,11 @@ export class SearchController {
       }
 
       const resultRaw = await this.dataSource!
-        .getRepository(Constant)
-        .createQueryBuilder("constants")
-        .distinct(true)
+        .createQueryBuilder()
+        .select("constants.value", "value")
+        .addSelect("constants.significant_figures", "significant_figures")
         .addSelect("ligands.name", "name")
         .addSelect("ligands.molecular_formula", "molecular_formula")
-        .addSelect("constants.value", "value")
-        .addSelect("constants.significant_figures", "significant_figures")
         .addSelect("ligands.categories", "categories")
         .addSelect("metals.central_element", "central_element")
         .addSelect("conditions.constant_kind", "constant_kind")
@@ -217,6 +215,8 @@ export class SearchController {
         .addSelect("ligands.charge", "ligand_charge")
         .addSelect("(ligands.form).protonation", "protonation")
         .addSelect("metals.charge", "metal_charge")
+        .from("constants", "constants")
+        .distinct(true)
         .leftJoin("ligands", "ligands", "ligands.id = constants.ligand_id")
         .leftJoin("metals", "metals", "metals.id = constants.metal_id")
         .leftJoin("equilibrium_expressions", "equilibrium_expressions", "equilibrium_expressions.id = constants.equilibrium_expression_id")
