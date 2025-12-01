@@ -239,6 +239,7 @@
         :headers="headers"
         :items="constants"
         :items-per-page="itemsPerPage"
+        item-value="value"
         multi-sort
         class="mt-8 elevation-1"
       >
@@ -266,37 +267,37 @@
                 FootNote:
                 <div
                   class="ml-2"
-                  v-html="getFootNote(item.raw.legacy_identifier) ?? 'None'"
+                  v-html="getFootNote((item.raw || item).legacy_identifier) ?? 'None'"
                 ></div>
               </v-chip>
             </td>
           </tr>
         </template>
         <template v-slot:[`item.constant_kind`]="{ item }">
-          <v-chip :color="getConstantKindBadgeColor(item.raw.constant_kind)">
+          <v-chip :color="getConstantKindBadgeColor((item.raw || item).constant_kind)">
             <div
               class="no-katex-html"
-              v-html="getFormattedConstantKind(item.raw.constant_kind)"
+              v-html="getFormattedConstantKind((item.raw || item).constant_kind)"
             ></div>
           </v-chip>
         </template>
         <template v-slot:[`item.expression_string`]="{ item }">
           <div
             class="no-katex-html"
-            v-html="convertExpressionToLatex(item.raw.expression_string)"
+            v-html="convertExpressionToLatex((item.raw || item).expression_string)"
           ></div>
         </template>
         <template v-slot:[`item.temperature`]="{ item }">
           <div>
-            {{ item.raw.temperature !== undefined && item.raw.temperature !== null 
-              ? item.raw.temperature + (item.raw.temperature_varies ? ' (varies)' : '') + ' °C'
+            {{ ((item.raw || item).temperature !== undefined && (item.raw || item).temperature !== null)
+              ? (item.raw || item).temperature + ((item.raw || item).temperature_varies ? ' (varies)' : '') + ' °C'
               : '-' }}
           </div>
         </template>
         <template v-slot:[`item.ionic_strength`]="{ item }">
           <div>
-            {{ item.raw.ionic_strength !== undefined && item.raw.ionic_strength !== null 
-              ? item.raw.ionic_strength + ' M'
+            {{ ((item.raw || item).ionic_strength !== undefined && (item.raw || item).ionic_strength !== null)
+              ? (item.raw || item).ionic_strength + ' M'
               : '-' }}
           </div>
         </template>
@@ -306,22 +307,22 @@
               class="no-katex-html pl-3 pr-3"
               v-html="
                 convertValueWithUncertaintyToLatex1(
-                  item.raw.value,
-                  item.raw.magnitude,
-                  item.raw.direction,
-                  item.raw.constant_kind
+                  (item.raw || item).value,
+                  (item.raw || item).magnitude,
+                  (item.raw || item).direction,
+                  (item.raw || item).constant_kind
                 )
               "
             ></div>
             <div
-              v-if="item.raw.constant_kind !== 'Equilibrium'"
+              v-if="(item.raw || item).constant_kind !== 'Equilibrium'"
               class="no-katex-html pl-3 pr-3"
               v-html="
                 convertValueWithUncertaintyToLatex2(
-                  item.raw.value,
-                  item.raw.magnitude,
-                  item.raw.direction,
-                  item.raw.constant_kind
+                  (item.raw || item).value,
+                  (item.raw || item).magnitude,
+                  (item.raw || item).direction,
+                  (item.raw || item).constant_kind
                 )
               "
             ></div>

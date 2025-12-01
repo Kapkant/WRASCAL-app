@@ -259,8 +259,14 @@ export default defineComponent({
         // When a row is expanded, load constants if not already loaded
         for (const row of newVal) {
           if (row) {
+            // Skip if this is a group header (has 'value' and 'items' properties)
+            if (row.value !== undefined && row.items !== undefined) {
+              console.log('Skipping group header:', row.value);
+              continue;
+            }
+            
             // Try to extract data from the row - it might be the item directly or wrapped
-            const itemData = this.getItemData(row.raw || row);
+            const itemData = this.getItemData(row);
             if (itemData && itemData.ligand_id !== undefined && itemData.metal_id !== undefined) {
               const metalKey = this.getMetalKey(itemData);
               console.log('Row expanded, metalKey:', metalKey, 'hasData:', !!this.constantsData[metalKey]);
@@ -269,7 +275,7 @@ export default defineComponent({
                 this.loadConstants(itemData);
               }
             } else {
-              console.log('Row expanded but item missing required IDs. itemData:', itemData, 'row:', row);
+              console.log('Row expanded but item missing required IDs. itemData:', itemData, 'row:', row, 'row keys:', row ? Object.keys(row) : 'null');
             }
           }
         }
@@ -299,6 +305,11 @@ export default defineComponent({
         return null;
       }
       
+      // Skip group headers (they have 'value' and 'items' properties)
+      if (item.value !== undefined && item.items !== undefined) {
+        return null;
+      }
+      
       // Try different ways to extract the data
       let data = item;
       if (item.raw) {
@@ -313,15 +324,9 @@ export default defineComponent({
         if (data.ligand_id !== undefined && data.metal_id !== undefined) {
           return data;
         }
-        // If it's a group item, it might not have these fields - that's ok, we'll handle it
-        if (data.value !== undefined && data.items) {
-          // This is a group header, not a data row
-          console.log('getItemData: This is a group header, not a data row');
-          return null;
-        }
       }
       
-      console.warn('getItemData: Could not extract valid data from item', item);
+      console.warn('getItemData: Could not extract valid data from item', item, 'data:', data);
       return null;
     },
     getMetalKey(item: LigandSearchResultModel): string {
