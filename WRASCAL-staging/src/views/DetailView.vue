@@ -239,10 +239,27 @@
         :headers="headers"
         :items="constants"
         :items-per-page="itemsPerPage"
-        item-value="value"
         multi-sort
         class="mt-8 elevation-1"
       >
+        <template
+          v-if="groupBy.length > 0"
+          v-slot:group-header="{ item, columns, toggleGroup, isGroupOpen }"
+        >
+          <tr class="text-left">
+            <td :colspan="columns.length" class="pa-2" style="background-color: rgba(0,0,0,0.05);">
+              <VBtn
+                size="small"
+                variant="text"
+                :class="`ml-${item.depth * 5}`"
+                :icon="isGroupOpen(item) ? '$expand' : '$next'"
+                @click="toggleGroup(item)"
+              ></VBtn>
+              <strong v-html="item.value"></strong>
+              <span v-if="item.items" class="text-caption ml-2">({{ item.items.length }} items)</span>
+            </td>
+          </tr>
+        </template>
         <template v-slot:expanded-row="{ columns, item }">
           <tr>
             <td :colspan="columns.length" class="text-left">
@@ -251,37 +268,40 @@
                 FootNote:
                 <div
                   class="ml-2"
-                  v-html="getFootNote(item.legacy_identifier) ?? 'None'"
+                  v-html="getFootNote((item.raw || item).legacy_identifier) ?? 'None'"
                 ></div>
               </v-chip>
             </td>
           </tr>
         </template>
         <template v-slot:[`item.constant_kind`]="{ item }">
-          <v-chip :color="getConstantKindBadgeColor(item.constant_kind)">
+          <v-chip v-if="(item.raw || item).constant_kind" :color="getConstantKindBadgeColor((item.raw || item).constant_kind)">
             <div
               class="no-katex-html"
-              v-html="getFormattedConstantKind(item.constant_kind)"
+              v-html="getFormattedConstantKind((item.raw || item).constant_kind)"
             ></div>
           </v-chip>
+          <span v-else>-</span>
         </template>
         <template v-slot:[`item.expression_string`]="{ item }">
           <div
+            v-if="(item.raw || item).expression_string"
             class="no-katex-html"
-            v-html="convertExpressionToLatex(item.expression_string)"
+            v-html="convertExpressionToLatex((item.raw || item).expression_string)"
           ></div>
+          <span v-else>-</span>
         </template>
         <template v-slot:[`item.temperature`]="{ item }">
           <div>
-            {{ (item.temperature !== undefined && item.temperature !== null)
-              ? item.temperature + (item.temperature_varies ? ' (varies)' : '') + ' °C'
+            {{ ((item.raw || item).temperature !== undefined && (item.raw || item).temperature !== null)
+              ? (item.raw || item).temperature + ((item.raw || item).temperature_varies ? ' (varies)' : '') + ' °C'
               : '-' }}
           </div>
         </template>
         <template v-slot:[`item.ionic_strength`]="{ item }">
           <div>
-            {{ (item.ionic_strength !== undefined && item.ionic_strength !== null)
-              ? item.ionic_strength + ' M'
+            {{ ((item.raw || item).ionic_strength !== undefined && (item.raw || item).ionic_strength !== null)
+              ? (item.raw || item).ionic_strength + ' M'
               : '-' }}
           </div>
         </template>
@@ -291,22 +311,22 @@
               class="no-katex-html pl-3 pr-3"
               v-html="
                 convertValueWithUncertaintyToLatex1(
-                  item.value,
-                  item.magnitude,
-                  item.direction,
-                  item.constant_kind
+                  (item.raw || item).value,
+                  (item.raw || item).magnitude,
+                  (item.raw || item).direction,
+                  (item.raw || item).constant_kind
                 )
               "
             ></div>
             <div
-              v-if="item.constant_kind !== 'Equilibrium'"
+              v-if="(item.raw || item).constant_kind !== 'Equilibrium'"
               class="no-katex-html pl-3 pr-3"
               v-html="
                 convertValueWithUncertaintyToLatex2(
-                  item.value,
-                  item.magnitude,
-                  item.direction,
-                  item.constant_kind
+                  (item.raw || item).value,
+                  (item.raw || item).magnitude,
+                  (item.raw || item).direction,
+                  (item.raw || item).constant_kind
                 )
               "
             ></div>
@@ -789,6 +809,13 @@ export default defineComponent({
 
           this.originalData = result;
           this.constants = filteredData;
+
+          // Log the actual data structure to debug
+          console.log("DetailView: constants data loaded", filteredData.length, "items");
+          if (filteredData.length > 0) {
+            console.log("DetailView: First constant item structure:", JSON.stringify(filteredData[0], null, 2));
+            console.log("DetailView: First constant item keys:", Object.keys(filteredData[0]));
+          }
 
           // Start with NO grouping - show flat table so all data is visible and clear
           this.groupBy = [];
