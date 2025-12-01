@@ -286,35 +286,46 @@
             v-html="convertExpressionToLatex(item.raw.expression_string)"
           ></div>
         </template>
+        <template v-slot:[`item.temperature`]="{ item }">
+          <div>
+            {{ item.raw.temperature !== undefined && item.raw.temperature !== null 
+              ? item.raw.temperature + (item.raw.temperature_varies ? ' (varies)' : '') + ' °C'
+              : '-' }}
+          </div>
+        </template>
+        <template v-slot:[`item.ionic_strength`]="{ item }">
+          <div>
+            {{ item.raw.ionic_strength !== undefined && item.raw.ionic_strength !== null 
+              ? item.raw.ionic_strength + ' M'
+              : '-' }}
+          </div>
+        </template>
         <template v-slot:[`item.value`]="{ item }">
-          <tr>
-            <td style="min-width: 150px">
-              <div
-                class="no-katex-html pl-3 pr-3"
-                v-html="
-                  convertValueWithUncertaintyToLatex1(
-                    item.raw.value,
-                    item.raw.magnitude,
-                    item.raw.direction,
-                    item.raw.constant_kind
-                  )
-                "
-              ></div>
-            </td>
-            <td v-if="item.raw.constant_kind !== 'Equilibrium'">
-              <div
-                class="no-katex-html pl-3 pr-3"
-                v-html="
-                  convertValueWithUncertaintyToLatex2(
-                    item.raw.value,
-                    item.raw.magnitude,
-                    item.raw.direction,
-                    item.raw.constant_kind
-                  )
-                "
-              ></div>
-            </td>
-          </tr>
+          <div style="min-width: 150px" class="d-flex align-center">
+            <div
+              class="no-katex-html pl-3 pr-3"
+              v-html="
+                convertValueWithUncertaintyToLatex1(
+                  item.raw.value,
+                  item.raw.magnitude,
+                  item.raw.direction,
+                  item.raw.constant_kind
+                )
+              "
+            ></div>
+            <div
+              v-if="item.raw.constant_kind !== 'Equilibrium'"
+              class="no-katex-html pl-3 pr-3"
+              v-html="
+                convertValueWithUncertaintyToLatex2(
+                  item.raw.value,
+                  item.raw.magnitude,
+                  item.raw.direction,
+                  item.raw.constant_kind
+                )
+              "
+            ></div>
+          </div>
         </template>
       </v-data-table>
 

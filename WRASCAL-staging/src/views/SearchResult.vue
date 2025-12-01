@@ -70,15 +70,15 @@
             <template v-slot:expanded-row="{ columns, item }">
               <tr>
                 <td :colspan="columns.length" class="pa-4">
-                  <div v-if="loadingConstants[getMetalKey(getItemData(item))]" class="text-center pa-4">
+                  <div v-if="loadingConstants[getMetalKey(getItemData(item.raw || item))]" class="text-center pa-4">
                     <v-progress-circular indeterminate color="primary"></v-progress-circular>
                     <div class="mt-2">Loading constants...</div>
                   </div>
-                  <div v-else-if="constantsData[getMetalKey(getItemData(item))] && constantsData[getMetalKey(getItemData(item))].length > 0">
+                  <div v-else-if="constantsData[getMetalKey(getItemData(item.raw || item))] && constantsData[getMetalKey(getItemData(item.raw || item))].length > 0">
                     <div class="text-subtitle-2 mb-3">Constants Data:</div>
                     <v-data-table
                       :headers="constantHeaders"
-                      :items="constantsData[getMetalKey(getItemData(item))]"
+                      :items="constantsData[getMetalKey(getItemData(item.raw || item))]"
                       :items-per-page="20"
                       class="elevation-1"
                     >
@@ -102,13 +102,13 @@
                       <v-btn
                         color="primary"
                         prepend-icon="mdi-share"
-                        @click="goToDetailPage(getItemData(item))"
+                        @click="goToDetailPage(getItemData(item.raw || item))"
                       >
                         View Full Details
                       </v-btn>
                     </div>
                   </div>
-                  <div v-else-if="constantsData[getMetalKey(getItemData(item))] && constantsData[getMetalKey(getItemData(item))].length === 0" class="text-center pa-4">
+                  <div v-else-if="constantsData[getMetalKey(getItemData(item.raw || item))] && constantsData[getMetalKey(getItemData(item.raw || item))].length === 0" class="text-center pa-4">
                     <v-alert type="info" variant="tonal">
                       No constants data available for this metal-ligand combination.
                     </v-alert>
@@ -116,7 +116,7 @@
                       <v-btn
                         color="primary"
                         prepend-icon="mdi-share"
-                        @click="goToDetailPage(getItemData(item))"
+                        @click="goToDetailPage(getItemData(item.raw || item))"
                       >
                         View Detail Page
                       </v-btn>
@@ -256,20 +256,12 @@ export default defineComponent({
     expandedRows: {
       handler(newVal: any[], oldVal: any[]) {
         console.log('expandedRows changed:', newVal.length, 'rows expanded');
-        console.log('expandedRows items:', newVal.map(r => ({ 
-          type: typeof r, 
-          keys: r ? Object.keys(r) : null,
-          raw: r?.raw,
-          item: r?.item,
-          name: r?.name || r?.raw?.name || r?.item?.name,
-          ligand_id: r?.ligand_id || r?.raw?.ligand_id || r?.item?.ligand_id,
-          metal_id: r?.metal_id || r?.raw?.metal_id || r?.item?.metal_id
-        })));
         // When a row is expanded, load constants if not already loaded
         for (const row of newVal) {
           if (row) {
-            const itemData = this.getItemData(row);
-            if (itemData && itemData.ligand_id && itemData.metal_id) {
+            // Try to extract data from the row - it might be the item directly or wrapped
+            const itemData = this.getItemData(row.raw || row);
+            if (itemData && itemData.ligand_id !== undefined && itemData.metal_id !== undefined) {
               const metalKey = this.getMetalKey(itemData);
               console.log('Row expanded, metalKey:', metalKey, 'hasData:', !!this.constantsData[metalKey]);
               if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
@@ -302,14 +294,34 @@ export default defineComponent({
     getItemData(item: any): LigandSearchResultModel | null {
       // In grouped tables, item might be the data directly or wrapped in item.raw
       // Also check for item.item which is sometimes used in Vuetify data tables
-      console.log('getItemData called with item:', item, 'type:', typeof item, 'keys:', item ? Object.keys(item) : 'null');
-      const data = item?.raw || item?.item || item;
-      console.log('getItemData extracted data:', data, 'has ligand_id:', data?.ligand_id, 'has metal_id:', data?.metal_id);
-      // Validate that we have a proper data object with required fields
-      if (data && typeof data === 'object' && (data.ligand_id !== undefined || data.metal_id !== undefined)) {
-        return data;
+      if (!item) {
+        console.warn('getItemData: item is null or undefined');
+        return null;
       }
-      console.warn('getItemData: Could not extract valid data from item');
+      
+      // Try different ways to extract the data
+      let data = item;
+      if (item.raw) {
+        data = item.raw;
+      } else if (item.item) {
+        data = item.item;
+      }
+      
+      // If data is still the item itself, check if it has the properties we need
+      if (data && typeof data === 'object') {
+        // Check if it has the required fields
+        if (data.ligand_id !== undefined && data.metal_id !== undefined) {
+          return data;
+        }
+        // If it's a group item, it might not have these fields - that's ok, we'll handle it
+        if (data.value !== undefined && data.items) {
+          // This is a group header, not a data row
+          console.log('getItemData: This is a group header, not a data row');
+          return null;
+        }
+      }
+      
+      console.warn('getItemData: Could not extract valid data from item', item);
       return null;
     },
     getMetalKey(item: LigandSearchResultModel): string {
