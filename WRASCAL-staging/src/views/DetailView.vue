@@ -236,33 +236,13 @@
       <v-data-table
         v-model:items-per-page="itemsPerPage"
         v-model:expanded="expandedRows"
-        :group-by="groupBy.length > 0 ? groupBy : undefined"
         :headers="computedHeaders"
-        :items="constants"
+        :items="sortedConstants"
         :items-per-page="itemsPerPage"
         multi-sort
         show-expand
         class="mt-8 elevation-1"
       >
-        <template
-          v-if="groupBy.length > 0"
-          v-slot:group-header="{ item, columns, toggleGroup, isGroupOpen }"
-        >
-          <tr class="text-left">
-            <!-- Group header spans all columns including the Group column that Vuetify adds -->
-            <td :colspan="columns.length" class="pa-2" style="background-color: rgba(0,0,0,0.05);">
-              <VBtn
-                size="small"
-                variant="text"
-                :class="`ml-${item.depth * 5}`"
-                :icon="isGroupOpen(item) ? '$expand' : '$next'"
-                @click="toggleGroup(item)"
-              ></VBtn>
-              <strong v-html="item.value"></strong>
-              <span v-if="item.items" class="text-caption ml-2">({{ item.items.length }} items)</span>
-            </td>
-          </tr>
-        </template>
         <template v-slot:expanded-row="{ columns, item }">
           <tr v-if="getItemDataCached(item)">
             <td :colspan="columns.length" class="text-left">
@@ -491,25 +471,65 @@ export default defineComponent({
   },
   computed: {
     computedHeaders() {
-      // When grouping is active, Vuetify automatically hides grouped columns from data rows.
-      // This causes column misalignment. The fix is to ensure grouped columns still render.
-      // 
-      // SOLUTION: Remove grouped columns from the group-by array temporarily, OR
-      // use a custom approach. Actually, the real issue is that Vuetify's grouping
-      // behavior hides columns. We need to work around this.
-      //
-      // Since Vuetify hides grouped columns, we'll keep headers as-is and rely on
-      // slots to render grouped columns. However, the slots are called but columns
-      // don't render, causing misalignment.
-      //
-      // ACTUAL FIX: The problem is that when a column is grouped, Vuetify removes it
-      // from data rows. We need to ensure it's still rendered. The way to do this
-      // is to NOT use Vuetify's group-by for columns that need to be visible, OR
-      // to manually render grouped columns in their correct positions.
-      //
-      // For now, return headers as-is. We'll need to test if slots for grouped
-      // columns are actually called and if we can render them manually.
+      // All headers stay visible - no grouping means no columns are hidden
       return [...this.headers];
+    },
+    sortedConstants() {
+      // Instead of grouping (which hides columns), sort by selected fields
+      // This keeps all columns visible while organizing data
+      console.log('DetailView.sortedConstants: Computing sorted data', {
+        totalConstants: this.constants.length,
+        groupByFields: this.groupBy.map(g => g.key),
+        firstItemSample: this.constants.length > 0 ? {
+          expression_string: this.constants[0].expression_string,
+          constant_kind: this.constants[0].constant_kind,
+          ionic_strength: this.constants[0].ionic_strength,
+          temperature: this.constants[0].temperature,
+          value: this.constants[0].value
+        } : null
+      });
+
+      if (this.groupBy.length === 0) {
+        console.log('DetailView.sortedConstants: No grouping selected, returning original data');
+        return this.constants;
+      }
+
+      // Sort by the selected fields in order
+      const sorted = [...this.constants].sort((a, b) => {
+        for (const group of this.groupBy) {
+          const key = group.key as keyof ConstantResultModel;
+          const aVal = (a as any)[key];
+          const bVal = (b as any)[key];
+          
+          // Handle undefined/null values
+          if (aVal === undefined || aVal === null) {
+            if (bVal === undefined || bVal === null) continue;
+            return 1; // undefined goes to end
+          }
+          if (bVal === undefined || bVal === null) return -1;
+          
+          // Compare values (handle strings and numbers)
+          if (typeof aVal === 'string' && typeof bVal === 'string') {
+            const cmp = aVal.localeCompare(bVal);
+            if (cmp !== 0) return cmp;
+          } else {
+            if (aVal < bVal) return -1;
+            if (aVal > bVal) return 1;
+          }
+        }
+        return 0;
+      });
+
+      console.log('DetailView.sortedConstants: Sorting complete', {
+        sortedCount: sorted.length,
+        firstSortedItem: sorted.length > 0 ? {
+          expression_string: sorted[0].expression_string,
+          constant_kind: sorted[0].constant_kind,
+          ionic_strength: sorted[0].ionic_strength
+        } : null
+      });
+
+      return sorted;
     },
   },
   methods: {
@@ -826,6 +846,8 @@ export default defineComponent({
       });
     },
     regroup() {
+      // Instead of grouping (which hides columns), we'll sort by selected fields
+      // This keeps all columns visible while organizing data
       const temp = [];
 
       for (const state of this.groupKeys) {
@@ -833,9 +855,14 @@ export default defineComponent({
         temp.push({ key: state.key });
       }
 
-      // Only apply grouping if at least one field is selected
-      // If none selected, show flat table
+      // Store selected fields for sorting (not grouping)
       this.groupBy = temp.length > 0 ? temp : [];
+      
+      console.log('DetailView.regroup: User clicked REGROUP', {
+        selectedFields: this.groupBy.map(g => g.key),
+        totalConstants: this.constants.length,
+        willSort: this.groupBy.length > 0
+      });
     },
     changeUnbalancedDataState() {
       this.showUnbalancedData = !this.showUnbalancedData;
