@@ -19,10 +19,8 @@ ARG NODE_VERSION=18.20.2
 FROM node:${NODE_VERSION}-alpine as build
 WORKDIR /opt
 
-# Build frontend first
-COPY WRASCAL-staging/package.json WRASCAL-staging/package-lock.json WRASCAL-staging/yarn.lock WRASCAL-staging/pnpm-lock.yaml WRASCAL-staging/tsconfig.json WRASCAL-staging/tsconfig.node.json WRASCAL-staging/vite.config.ts WRASCAL-staging/index.html ./WRASCAL-staging/
-COPY WRASCAL-staging/src ./WRASCAL-staging/src
-COPY WRASCAL-staging/public ./WRASCAL-staging/public
+# Build frontend first - copy entire WRASCAL-staging directory
+COPY WRASCAL-staging ./WRASCAL-staging
 
 WORKDIR /opt/WRASCAL-staging
 # Install frontend dependencies and build
