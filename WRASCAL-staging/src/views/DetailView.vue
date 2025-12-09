@@ -258,51 +258,65 @@
           </tr>
         </template>
         <template v-slot:[`item.constant_kind`]="{ item }">
-          <template v-if="!item || !getItemDataCached(item)">-</template>
+          <template v-if="!item">-</template>
           <template v-else>
-            <v-chip v-if="safeGet(item, 'constant_kind')" :color="getConstantKindBadgeColor(safeGet(item, 'constant_kind', '') || '')">
-              <div
-                class="no-katex-html"
-                v-html="getFormattedConstantKind(safeGet(item, 'constant_kind'))"
-              ></div>
-            </v-chip>
-            <template v-else>-</template>
+            <template v-if="!getItemDataCached(item)">-</template>
+            <template v-else>
+              <v-chip v-if="safeGet(item, 'constant_kind')" :color="getConstantKindBadgeColor(safeGet(item, 'constant_kind', '') || '')">
+                <div
+                  class="no-katex-html"
+                  v-html="getFormattedConstantKind(safeGet(item, 'constant_kind'))"
+                ></div>
+              </v-chip>
+              <template v-else>-</template>
+            </template>
           </template>
         </template>
         <template v-slot:[`item.expression_string`]="{ item }">
-          <template v-if="!item || !getItemDataCached(item)">-</template>
+          <template v-if="!item">-</template>
           <template v-else>
-            <div
-              v-if="safeGet(item, 'expression_string')"
-              class="no-katex-html"
-              v-html="convertExpressionToLatex(safeGet(item, 'expression_string'))"
-            ></div>
-            <template v-else>-</template>
+            <template v-if="!getItemDataCached(item)">-</template>
+            <template v-else>
+              <div
+                v-if="safeGet(item, 'expression_string')"
+                class="no-katex-html"
+                v-html="convertExpressionToLatex(safeGet(item, 'expression_string'))"
+              ></div>
+              <template v-else>-</template>
+            </template>
           </template>
         </template>
         <template v-slot:[`item.temperature`]="{ item }">
-          <template v-if="!item || !getItemDataCached(item)">-</template>
+          <template v-if="!item">-</template>
           <template v-else>
-            <div>
-              {{ (safeGet(item, 'temperature') !== undefined && safeGet(item, 'temperature') !== null)
-                ? safeGet(item, 'temperature') + (safeGet(item, 'temperature_varies') ? ' (varies)' : '') + ' °C'
-                : '-' }}
-            </div>
+            <template v-if="!getItemDataCached(item)">-</template>
+            <template v-else>
+              <div>
+                {{ (safeGet(item, 'temperature') !== undefined && safeGet(item, 'temperature') !== null)
+                  ? safeGet(item, 'temperature') + (safeGet(item, 'temperature_varies') ? ' (varies)' : '') + ' °C'
+                  : '-' }}
+              </div>
+            </template>
           </template>
         </template>
         <template v-slot:[`item.ionic_strength`]="{ item }">
-          <template v-if="!item || !getItemDataCached(item)">-</template>
+          <template v-if="!item">-</template>
           <template v-else>
-            <div>
-              {{ (safeGet(item, 'ionic_strength') !== undefined && safeGet(item, 'ionic_strength') !== null)
-                ? safeGet(item, 'ionic_strength') + ' M'
-                : '-' }}
-            </div>
+            <template v-if="!getItemDataCached(item)">-</template>
+            <template v-else>
+              <div>
+                {{ (safeGet(item, 'ionic_strength') !== undefined && safeGet(item, 'ionic_strength') !== null)
+                  ? safeGet(item, 'ionic_strength') + ' M'
+                  : '-' }}
+              </div>
+            </template>
           </template>
         </template>
         <template v-slot:[`item.value`]="{ item }">
-          <template v-if="!item || !getItemDataCached(item)">-</template>
+          <template v-if="!item">-</template>
           <template v-else>
+            <template v-if="!getItemDataCached(item)">-</template>
+            <template v-else>
             <div style="min-width: 150px" class="d-flex align-center">
               <div
                 class="no-katex-html pl-3 pr-3"
@@ -326,8 +340,9 @@
                     safeGet(item, 'constant_kind')
                   )
                 "
-              ></div>
+              >              </div>
             </div>
+            </template>
           </template>
         </template>
       </v-data-table>
