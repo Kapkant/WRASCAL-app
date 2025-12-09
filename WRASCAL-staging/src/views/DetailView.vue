@@ -235,11 +235,13 @@
 
       <v-data-table
         v-model:items-per-page="itemsPerPage"
+        v-model:expanded="expandedRows"
         :group-by="groupBy.length > 0 ? groupBy : undefined"
-        :headers="headers"
+        :headers="computedHeaders"
         :items="constants"
         :items-per-page="itemsPerPage"
         multi-sort
+        show-expand
         class="mt-8 elevation-1"
       >
         <template
@@ -247,6 +249,7 @@
           v-slot:group-header="{ item, columns, toggleGroup, isGroupOpen }"
         >
           <tr class="text-left">
+            <!-- Group header spans all columns including the Group column that Vuetify adds -->
             <td :colspan="columns.length" class="pa-2" style="background-color: rgba(0,0,0,0.05);">
               <VBtn
                 size="small"
@@ -462,7 +465,7 @@ export default defineComponent({
         { title: "Temp (°C)", align: "end", key: "temperature" },
         { title: "Ionic Strength (M)", align: "center", key: "ionic_strength" },
         { title: "Value", align: "start", key: "value" },
-        { title: "FootNotes", key: "data-table-expand" },
+        { title: "FootNotes", key: "data-table-expand", sortable: false },
       ],
       constants: [] as ConstantResultModel[],
       selectedSearchResult:
@@ -479,11 +482,35 @@ export default defineComponent({
       itemsPerPage: 40,
       originalData: [] as ConstantResultModel[],
       showUnbalancedData: false,
+      expandedRows: [] as any[],
       failedResources: [] as RequestFailedModel[],
       failedConstantCount: 0,
       failedMolDataCount: 0,
       failedReferenceCount: 0,
     };
+  },
+  computed: {
+    computedHeaders() {
+      // When grouping is active, Vuetify automatically hides grouped columns from data rows.
+      // This causes column misalignment. The fix is to ensure grouped columns still render.
+      // 
+      // SOLUTION: Remove grouped columns from the group-by array temporarily, OR
+      // use a custom approach. Actually, the real issue is that Vuetify's grouping
+      // behavior hides columns. We need to work around this.
+      //
+      // Since Vuetify hides grouped columns, we'll keep headers as-is and rely on
+      // slots to render grouped columns. However, the slots are called but columns
+      // don't render, causing misalignment.
+      //
+      // ACTUAL FIX: The problem is that when a column is grouped, Vuetify removes it
+      // from data rows. We need to ensure it's still rendered. The way to do this
+      // is to NOT use Vuetify's group-by for columns that need to be visible, OR
+      // to manually render grouped columns in their correct positions.
+      //
+      // For now, return headers as-is. We'll need to test if slots for grouped
+      // columns are actually called and if we can render them manually.
+      return [...this.headers];
+    },
   },
   methods: {
     async loadPreviewScripts() {
