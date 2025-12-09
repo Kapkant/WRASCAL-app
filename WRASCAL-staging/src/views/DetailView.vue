@@ -617,7 +617,8 @@ export default defineComponent({
     },
     getItemData(item: any): any {
       try {
-        if (!item || typeof item !== 'object') {
+        // CRITICAL: Check for undefined/null first before accessing any properties
+        if (item === undefined || item === null || typeof item !== 'object') {
           return null;
         }
         
@@ -653,18 +654,18 @@ export default defineComponent({
         
         // Log when we can't identify the item - this is the critical diagnostic info
         console.error('DetailView.getItemData: UNKNOWN ITEM TYPE - cannot determine if group header or data', {
-          itemKeys: Object.keys(item),
+          itemKeys: item && typeof item === 'object' ? Object.keys(item) : 'null/undefined',
           itemType: typeof item,
-          hasRaw: !!item.raw,
-          hasItem: !!item.item,
-          hasDepth: item.depth !== undefined,
-          hasItems: !!item.items,
-          dataKeys: Object.keys(data),
+          hasRaw: item && item.raw ? !!item.raw : false,
+          hasItem: item && item.item ? !!item.item : false,
+          hasDepth: item && item.depth !== undefined,
+          hasItems: item && item.items ? !!item.items : false,
+          dataKeys: data && typeof data === 'object' ? Object.keys(data) : 'null/undefined',
           dataHasExpression: hasExpression,
           dataHasConstantKind: hasConstantKind,
           dataHasTemperature: hasTemperature,
           dataHasValue: hasValue,
-          fullItem: JSON.stringify(item, null, 2).substring(0, 500) // Limit to first 500 chars
+          fullItem: item ? JSON.stringify(item, null, 2).substring(0, 500) : 'null/undefined' // Limit to first 500 chars
         });
         
         // Otherwise, not a valid data item
@@ -679,6 +680,11 @@ export default defineComponent({
     },
     safeGet(item: any, property: string, fallback: any = null): any {
       try {
+        // CRITICAL: Check for undefined/null first before calling getItemData
+        if (item === undefined || item === null) {
+          return fallback;
+        }
+        
         const data = this.getItemData(item);
         if (!data || typeof data !== 'object') {
           // Log when safeGet is called but getItemData returns null/undefined
@@ -707,6 +713,10 @@ export default defineComponent({
     getItemDataCached(item: any): any {
       // Always return null (never undefined) for consistency
       try {
+        // CRITICAL: Check for undefined/null first
+        if (item === undefined || item === null) {
+          return null;
+        }
         const data = this.getItemData(item);
         return data ? data : null;
       } catch (error) {
