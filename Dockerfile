@@ -19,7 +19,21 @@ ARG NODE_VERSION=18.20.2
 FROM node:${NODE_VERSION}-alpine as build
 WORKDIR /opt
 
-# Copy package files
+# Build frontend first
+COPY WRASCAL-staging/package.json WRASCAL-staging/package-lock.json WRASCAL-staging/yarn.lock WRASCAL-staging/pnpm-lock.yaml WRASCAL-staging/tsconfig.json WRASCAL-staging/tsconfig.node.json WRASCAL-staging/vite.config.ts WRASCAL-staging/index.html ./WRASCAL-staging/
+COPY WRASCAL-staging/src ./WRASCAL-staging/src
+COPY WRASCAL-staging/public ./WRASCAL-staging/public
+
+WORKDIR /opt/WRASCAL-staging
+# Install frontend dependencies and build
+RUN if [ -f yarn.lock ]; then yarn install --pure-lockfile; \
+    elif [ -f package-lock.json ]; then npm ci; \
+    elif [ -f pnpm-lock.yaml ]; then npm install -g pnpm && pnpm install; \
+    else npm install; fi
+RUN yarn build || npm run build
+WORKDIR /opt
+
+# Build backend
 COPY package.json yarn.lock tsconfig.json tsconfig.compile.json .barrelsby.json ./
 
 # Install dependencies
