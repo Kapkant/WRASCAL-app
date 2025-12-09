@@ -258,7 +258,7 @@
           </tr>
         </template>
         <template v-slot:[`item.constant_kind`]="{ item }">
-          <span v-if="!getItemDataCached(item)">-</span>
+          <span v-if="!item || !getItemDataCached(item)">-</span>
           <template v-else>
             <v-chip v-if="safeGet(item, 'constant_kind')" :color="getConstantKindBadgeColor(safeGet(item, 'constant_kind', '') || '')">
               <div
@@ -270,7 +270,7 @@
           </template>
         </template>
         <template v-slot:[`item.expression_string`]="{ item }">
-          <span v-if="!getItemDataCached(item)">-</span>
+          <span v-if="!item || !getItemDataCached(item)">-</span>
           <template v-else>
             <div
               v-if="safeGet(item, 'expression_string')"
@@ -281,7 +281,7 @@
           </template>
         </template>
         <template v-slot:[`item.temperature`]="{ item }">
-          <span v-if="!getItemDataCached(item)">-</span>
+          <span v-if="!item || !getItemDataCached(item)">-</span>
           <template v-else>
             <div>
               {{ (safeGet(item, 'temperature') !== undefined && safeGet(item, 'temperature') !== null)
@@ -291,7 +291,7 @@
           </template>
         </template>
         <template v-slot:[`item.ionic_strength`]="{ item }">
-          <span v-if="!getItemDataCached(item)">-</span>
+          <span v-if="!item || !getItemDataCached(item)">-</span>
           <template v-else>
             <div>
               {{ (safeGet(item, 'ionic_strength') !== undefined && safeGet(item, 'ionic_strength') !== null)
@@ -301,7 +301,7 @@
           </template>
         </template>
         <template v-slot:[`item.value`]="{ item }">
-          <span v-if="!getItemDataCached(item)">-</span>
+          <span v-if="!item || !getItemDataCached(item)">-</span>
           <template v-else>
             <div style="min-width: 150px" class="d-flex align-center">
               <div
