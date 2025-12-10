@@ -63,7 +63,8 @@ COPY --from=build /opt/package.json ./package.json
 
 # Copy additional files
 COPY ./views ./views
-COPY ./public ./public
+# Copy built frontend from build stage (not source public directory)
+COPY --from=build /opt/public ./public
 COPY ./processes.config.js ./
 
 # Create non-root user for security
