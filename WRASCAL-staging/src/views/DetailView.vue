@@ -957,7 +957,8 @@ export default defineComponent({
 
           const filteredData = [];
 
-          for (let i = result.length - 1; i > 0; i--) {
+          // Fix: loop should include index 0 (changed i > 0 to i >= 0)
+          for (let i = result.length - 1; i >= 0; i--) {
             const constant = result[i];
 
             if (constant.expression_string === undefined) continue;
@@ -970,6 +971,23 @@ export default defineComponent({
 
           this.originalData = result;
           this.constants = filteredData;
+
+          // Enhanced diagnostic logging
+          console.log("DetailView.loadConstants: Filtering complete", {
+            totalResults: result.length,
+            filteredCount: filteredData.length,
+            firstResultSample: result.length > 0 ? {
+              expression_string: result[0].expression_string,
+              constant_kind: result[0].constant_kind,
+              value: result[0].value,
+              hasExpression: result[0].expression_string !== undefined
+            } : null,
+            firstFilteredSample: filteredData.length > 0 ? {
+              expression_string: filteredData[0].expression_string,
+              constant_kind: filteredData[0].constant_kind,
+              value: filteredData[0].value
+            } : null
+          });
 
           // Only log if there's a problem with data structure
           if (filteredData.length > 0) {
@@ -987,7 +1005,9 @@ export default defineComponent({
           } else if (result.length > 0) {
             console.warn("DetailView.loadConstants: All items filtered out", {
               totalResults: result.length,
-              firstItemKeys: Object.keys(result[0])
+              firstItemKeys: Object.keys(result[0]),
+              firstItemExpression: result[0].expression_string,
+              firstItemSample: JSON.stringify(result[0], null, 2).substring(0, 500)
             });
           }
 
