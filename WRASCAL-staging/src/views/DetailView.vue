@@ -920,26 +920,24 @@ export default defineComponent({
         return;
       }
 
-      console.log("DetailView.loadConstants: Starting API call", {
-        ligand_id: store.selectedSearchResult.ligand_id,
-        metal_id: store.selectedSearchResult.metal_id
-      });
+      console.log("DetailView.loadConstants: Starting API call");
+      console.log("  ligand_id:", store.selectedSearchResult.ligand_id);
+      console.log("  metal_id:", store.selectedSearchResult.metal_id);
 
       getConstants(
         store.selectedSearchResult.ligand_id,
         store.selectedSearchResult.metal_id
       )
         .then((result) => {
-          console.log("DetailView.loadConstants: API response received", {
-            resultLength: result?.length || 0,
-            resultIsArray: Array.isArray(result),
-            firstItemSample: result && result.length > 0 ? {
-              keys: Object.keys(result[0]),
-              expression_string: result[0].expression_string,
-              constant_kind: result[0].constant_kind,
-              value: result[0].value
-            } : null
-          });
+          console.log("DetailView.loadConstants: API response received");
+          console.log("  resultLength:", result?.length || 0);
+          console.log("  resultIsArray:", Array.isArray(result));
+          if (result && result.length > 0) {
+            console.log("  firstItem keys:", Object.keys(result[0]));
+            console.log("  firstItem.expression_string:", result[0].expression_string);
+            console.log("  firstItem.constant_kind:", result[0].constant_kind);
+            console.log("  firstItem.value:", result[0].value);
+          }
 
           if (!result) {
             console.warn("DetailView.loadConstants: API returned null/undefined");
@@ -998,26 +996,25 @@ export default defineComponent({
           this.originalData = result;
           this.constants = filteredData;
 
-          // Enhanced diagnostic logging
-          console.log("DetailView.loadConstants: Filtering complete", {
-            totalResults: result.length,
-            filteredCount: filteredData.length,
-            skippedUndefined,
-            skippedUnbalanced,
-            unbalancedList: unbalancedDataNameList,
-            firstResultSample: result.length > 0 ? {
-              expression_string: result[0].expression_string,
-              constant_kind: result[0].constant_kind,
-              value: result[0].value,
-              hasExpression: result[0].expression_string !== undefined
-            } : null,
-            firstFilteredSample: filteredData.length > 0 ? {
-              expression_string: filteredData[0].expression_string,
-              constant_kind: filteredData[0].constant_kind,
-              value: filteredData[0].value
-            } : null,
-            allExpressions: result.slice(0, 5).map(r => r.expression_string)
-          });
+          // Enhanced diagnostic logging - use individual logs so values are always visible
+          console.log("DetailView.loadConstants: Filtering complete");
+          console.log("  totalResults:", result.length);
+          console.log("  filteredCount:", filteredData.length);
+          console.log("  skippedUndefined:", skippedUndefined);
+          console.log("  skippedUnbalanced:", skippedUnbalanced);
+          console.log("  unbalancedList:", unbalancedDataNameList);
+          if (result.length > 0) {
+            console.log("  firstResult.expression_string:", result[0].expression_string);
+            console.log("  firstResult.constant_kind:", result[0].constant_kind);
+            console.log("  firstResult.value:", result[0].value);
+            console.log("  firstResult.hasExpression:", result[0].expression_string !== undefined);
+            console.log("  first 5 expressions:", result.slice(0, 5).map(r => r.expression_string));
+          }
+          if (filteredData.length > 0) {
+            console.log("  firstFiltered.expression_string:", filteredData[0].expression_string);
+            console.log("  firstFiltered.constant_kind:", filteredData[0].constant_kind);
+            console.log("  firstFiltered.value:", filteredData[0].value);
+          }
 
           // Only log if there's a problem with data structure
           if (filteredData.length > 0) {
