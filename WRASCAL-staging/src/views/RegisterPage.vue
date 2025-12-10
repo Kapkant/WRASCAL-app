@@ -87,6 +87,10 @@ export default defineComponent({
   }),
   methods: {
     async submitForm() {
+      if (!supabase) {
+        alert("Authentication is not configured. Please contact the administrator.");
+        return;
+      }
       try {
         const { error } = await supabase.auth.signUp({
           email: this.emailValue,

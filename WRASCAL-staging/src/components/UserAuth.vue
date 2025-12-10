@@ -1,11 +1,6 @@
 <script setup lang="ts">
-import createClient from '@supabase/supabase-js'
 import { Auth, ThemeBold, type Appereance, css } from 'vue-auth-ui'
-
-const supabase = createClient(
-  'my-project-url',
-  'my-anon-key'
-)
+import { supabase } from '@/utils/supabase'
 
 const appearance: Appereance = {
   theme: ThemeBold,
@@ -29,6 +24,10 @@ const appearance: Appereance = {
 let myError: string | undefined
 const signIn = async (creds: any) => {
   myError = undefined
+  if (!supabase) {
+    myError = "Authentication is not configured"
+    return
+  }
   const { data, error } = await supabase.auth.signInWithPassword(creds)
   myError = error?.message
 
@@ -38,6 +37,6 @@ const signIn = async (creds: any) => {
 
 <template>
   <Auth :providers="['google']" socialLayout="col" :appearance="appearance" :error="myError"
-    @signInWithPassword="creds => signIn(creds)" @signUp="creds => supabase.auth.signUp(creds)"
-    @signInWithOAuth="provider => supabase.auth.signInWithOAuth(provider)" />
+    @signInWithPassword="creds => signIn(creds)" @signUp="creds => supabase?.auth.signUp(creds)"
+    @signInWithOAuth="provider => supabase?.auth.signInWithOAuth(provider)" />
 </template>

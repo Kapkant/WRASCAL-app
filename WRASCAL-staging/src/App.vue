@@ -186,7 +186,9 @@ export default defineComponent({
     },
 
     logOut() {
-      supabase.auth.signOut();
+      if (supabase) {
+        supabase.auth.signOut();
+      }
       this.authStore.logout();
 
       if (this.$route.path === "/new-entry") {
