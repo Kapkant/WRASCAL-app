@@ -1072,9 +1072,14 @@ export default defineComponent({
           this.checkLoadingComplete();
         })
         .catch(async (err) => {
+          console.error("DetailView.loadConstants: API call failed", err);
+          console.error("  error message:", err?.message || err);
+          console.error("  error stack:", err?.stack);
           this.failedConstantCount += 1;
+          console.log("  failedConstantCount:", this.failedConstantCount);
 
           if (this.failedConstantCount < 3) {
+            console.log("  Retrying in", 500 * this.failedConstantCount, "ms");
             await new Promise((r) =>
               setTimeout(r, 500 * this.failedConstantCount)
             );
@@ -1082,9 +1087,10 @@ export default defineComponent({
             return;
           }
 
+          console.error("  Max retries reached, giving up");
           this.failedResources.push({
             resourceName: "Constants",
-            detail: err,
+            detail: err?.message || String(err),
             action: () => this.loadConstants(),
           });
           
