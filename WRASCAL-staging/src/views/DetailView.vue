@@ -920,12 +920,31 @@ export default defineComponent({
         return;
       }
 
+      console.log("DetailView.loadConstants: Starting API call", {
+        ligand_id: store.selectedSearchResult.ligand_id,
+        metal_id: store.selectedSearchResult.metal_id
+      });
+
       getConstants(
         store.selectedSearchResult.ligand_id,
         store.selectedSearchResult.metal_id
       )
         .then((result) => {
-          if (!result) return;
+          console.log("DetailView.loadConstants: API response received", {
+            resultLength: result?.length || 0,
+            resultIsArray: Array.isArray(result),
+            firstItemSample: result && result.length > 0 ? {
+              keys: Object.keys(result[0]),
+              expression_string: result[0].expression_string,
+              constant_kind: result[0].constant_kind,
+              value: result[0].value
+            } : null
+          });
+
+          if (!result) {
+            console.warn("DetailView.loadConstants: API returned null/undefined");
+            return;
+          }
 
           if (!this.categories || this.categories.length === 0) {
             let resultCategories: string[] = [];
@@ -956,17 +975,24 @@ export default defineComponent({
           }
 
           const filteredData = [];
+          let skippedUndefined = 0;
+          let skippedUnbalanced = 0;
 
           // Fix: loop should include index 0 (changed i > 0 to i >= 0)
           for (let i = result.length - 1; i >= 0; i--) {
             const constant = result[i];
 
-            if (constant.expression_string === undefined) continue;
-            if (
-              unbalancedDataNameList.indexOf(constant.expression_string) === -1
-            ) {
-              filteredData.push(constant);
+            if (constant.expression_string === undefined) {
+              skippedUndefined++;
+              continue;
             }
+            if (
+              unbalancedDataNameList.indexOf(constant.expression_string) !== -1
+            ) {
+              skippedUnbalanced++;
+              continue;
+            }
+            filteredData.push(constant);
           }
 
           this.originalData = result;
@@ -976,6 +1002,9 @@ export default defineComponent({
           console.log("DetailView.loadConstants: Filtering complete", {
             totalResults: result.length,
             filteredCount: filteredData.length,
+            skippedUndefined,
+            skippedUnbalanced,
+            unbalancedList: unbalancedDataNameList,
             firstResultSample: result.length > 0 ? {
               expression_string: result[0].expression_string,
               constant_kind: result[0].constant_kind,
@@ -986,7 +1015,8 @@ export default defineComponent({
               expression_string: filteredData[0].expression_string,
               constant_kind: filteredData[0].constant_kind,
               value: filteredData[0].value
-            } : null
+            } : null,
+            allExpressions: result.slice(0, 5).map(r => r.expression_string)
           });
 
           // Only log if there's a problem with data structure
