@@ -492,20 +492,20 @@ export default defineComponent({
     sortedConstants() {
       // Instead of grouping (which hides columns), sort by selected fields
       // This keeps all columns visible while organizing data
-      console.log('DetailView.sortedConstants: Computing sorted data', {
-        totalConstants: this.constants.length,
-        groupByFields: this.groupBy.map(g => g.key),
-        firstItemSample: this.constants.length > 0 ? {
-          expression_string: this.constants[0].expression_string,
-          constant_kind: this.constants[0].constant_kind,
-          ionic_strength: this.constants[0].ionic_strength,
-          temperature: this.constants[0].temperature,
-          value: this.constants[0].value
-        } : null
-      });
+      console.log('DetailView.sortedConstants: Computing sorted data');
+      console.log('  totalConstants:', this.constants.length);
+      console.log('  groupByFields:', this.groupBy.map(g => g.key));
+      console.log('  constants array:', this.constants);
+      
+      if (this.constants.length > 0) {
+        console.log('  firstItem.expression_string:', this.constants[0].expression_string);
+        console.log('  firstItem.constant_kind:', this.constants[0].constant_kind);
+        console.log('  firstItem.value:', this.constants[0].value);
+      }
 
       if (this.groupBy.length === 0) {
         console.log('DetailView.sortedConstants: No grouping selected, returning original data');
+        console.log('  returning array with length:', this.constants.length);
         return this.constants;
       }
 
@@ -980,12 +980,15 @@ export default defineComponent({
           for (let i = result.length - 1; i >= 0; i--) {
             const constant = result[i];
 
-            if (constant.expression_string === undefined) {
+            // Handle null, undefined, or empty string
+            const expr = constant.expression_string;
+            if (expr === undefined || expr === null || expr === "") {
               skippedUndefined++;
               continue;
             }
+            // Check if expression is in the unbalanced list
             if (
-              unbalancedDataNameList.indexOf(constant.expression_string) !== -1
+              unbalancedDataNameList.indexOf(expr) !== -1
             ) {
               skippedUnbalanced++;
               continue;
@@ -1005,10 +1008,14 @@ export default defineComponent({
           console.log("  unbalancedList:", unbalancedDataNameList);
           if (result.length > 0) {
             console.log("  firstResult.expression_string:", result[0].expression_string);
+            console.log("  firstResult.expression_string type:", typeof result[0].expression_string);
+            console.log("  firstResult.expression_string === null:", result[0].expression_string === null);
+            console.log("  firstResult.expression_string === undefined:", result[0].expression_string === undefined);
             console.log("  firstResult.constant_kind:", result[0].constant_kind);
             console.log("  firstResult.value:", result[0].value);
-            console.log("  firstResult.hasExpression:", result[0].expression_string !== undefined);
+            console.log("  firstResult.hasExpression:", result[0].expression_string !== undefined && result[0].expression_string !== null && result[0].expression_string !== "");
             console.log("  first 5 expressions:", result.slice(0, 5).map(r => r.expression_string));
+            console.log("  first 5 expression types:", result.slice(0, 5).map(r => typeof r.expression_string));
           }
           if (filteredData.length > 0) {
             console.log("  firstFiltered.expression_string:", filteredData[0].expression_string);
