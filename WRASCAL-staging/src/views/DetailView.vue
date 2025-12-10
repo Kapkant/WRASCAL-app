@@ -1298,22 +1298,33 @@ export default defineComponent({
   watch: {
     constants: {
       handler(newVal: any[], oldVal: any[]) {
-        // Only log if there's an issue - check if items have unexpected structure
+        console.log('DetailView.constants watcher: constants changed');
+        console.log('  newVal length:', newVal?.length || 0);
+        console.log('  oldVal length:', oldVal?.length || 0);
+        
         if (newVal && newVal.length > 0) {
           const firstItem = newVal[0];
-          const firstItemData = this.getItemData(firstItem);
+          console.log('  firstItem keys:', Object.keys(firstItem));
+          console.log('  firstItem.expression_string:', firstItem.expression_string);
+          console.log('  firstItem.constant_kind:', firstItem.constant_kind);
+          console.log('  firstItem.value:', firstItem.value);
           
-          // Log if first item can't be processed (might indicate structure issue)
-          if (!firstItemData && firstItem) {
-            console.warn('DetailView.constants watcher: First item cannot be processed', {
-              itemKeys: Object.keys(firstItem),
-              hasDepth: firstItem.depth !== undefined,
-              hasRaw: !!firstItem.raw,
-              hasItems: !!firstItem.items,
-              itemType: typeof firstItem
-            });
+          // Check if it's a Vuetify-wrapped item (shouldn't be in raw constants array)
+          if (firstItem.raw !== undefined || firstItem.items !== undefined || firstItem.depth !== undefined) {
+            console.error('DetailView.constants watcher: UNEXPECTED - constants array contains Vuetify-wrapped items!');
           }
+        } else {
+          console.warn('DetailView.constants watcher: constants array is empty or null');
         }
+      },
+      immediate: true,
+      deep: true
+    },
+    sortedConstants: {
+      handler(newVal: any[], oldVal: any[]) {
+        console.log('DetailView.sortedConstants watcher: sortedConstants changed');
+        console.log('  newVal length:', newVal?.length || 0);
+        console.log('  oldVal length:', oldVal?.length || 0);
       },
       immediate: true,
       deep: true
