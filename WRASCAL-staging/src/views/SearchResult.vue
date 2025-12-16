@@ -46,39 +46,24 @@
             v-else
             v-model:items-per-page="itemsPerPage"
             v-model:expanded="expandedRows"
-            :group-by="groupBy"
             :headers="headers"
-            :items="searchResult"
+            :items="sortedSearchResult"
             item-value="name"
             show-expand
             class="elevation-1"
           >
-            <template v-slot:group-header="{ item, columns, toggleGroup, isGroupOpen }">
-              <tr class="text-left">
-                <td :colspan="columns.length">
-                  <VBtn
-                    size="small"
-                    variant="text"
-                    :class="`ml-${item.depth * 5}`"
-                    :icon="isGroupOpen(item) ? '$expand' : '$next'"
-                    @click="toggleGroup(item)"
-                  ></VBtn>
-                  <span v-html="item.value"></span>
-                </td>
-              </tr>
-            </template>
             <template v-slot:expanded-row="{ columns, item }">
               <tr>
                 <td :colspan="columns.length" class="pa-4">
-                  <div v-if="loadingConstants[getMetalKey(getItemData(item.raw || item))]" class="text-center pa-4">
+                  <div v-if="getItemData(item.raw || item) && loadingConstants[getMetalKey(getItemData(item.raw || item)!)]" class="text-center pa-4">
                     <v-progress-circular indeterminate color="primary"></v-progress-circular>
                     <div class="mt-2">Loading constants...</div>
                   </div>
-                  <div v-else-if="constantsData[getMetalKey(getItemData(item.raw || item))] && constantsData[getMetalKey(getItemData(item.raw || item))].length > 0">
+                  <div v-else-if="getItemData(item.raw || item) && constantsData[getMetalKey(getItemData(item.raw || item)!)] && constantsData[getMetalKey(getItemData(item.raw || item)!)].length > 0">
                     <div class="text-subtitle-2 mb-3">Constants Data:</div>
                     <v-data-table
                       :headers="constantHeaders"
-                      :items="constantsData[getMetalKey(getItemData(item.raw || item))]"
+                      :items="constantsData[getMetalKey(getItemData(item.raw || item)!)]"
                       :items-per-page="20"
                       class="elevation-1"
                     >
@@ -102,13 +87,13 @@
                       <v-btn
                         color="primary"
                         prepend-icon="mdi-share"
-                        @click="goToDetailPage(getItemData(item.raw || item))"
+                        @click="goToDetailPage(getItemData(item.raw || item)!)"
                       >
                         View Full Details
                       </v-btn>
                     </div>
                   </div>
-                  <div v-else-if="constantsData[getMetalKey(getItemData(item.raw || item))] && constantsData[getMetalKey(getItemData(item.raw || item))].length === 0" class="text-center pa-4">
+                  <div v-else-if="getItemData(item.raw || item) && constantsData[getMetalKey(getItemData(item.raw || item)!)] && constantsData[getMetalKey(getItemData(item.raw || item)!)].length === 0" class="text-center pa-4">
                     <v-alert type="info" variant="tonal">
                       No constants data available for this metal-ligand combination.
                     </v-alert>
@@ -116,7 +101,7 @@
                       <v-btn
                         color="primary"
                         prepend-icon="mdi-share"
-                        @click="goToDetailPage(getItemData(item.raw || item))"
+                        @click="goToDetailPage(getItemData(item.raw || item)!)"
                       >
                         View Detail Page
                       </v-btn>
@@ -130,49 +115,60 @@
               </tr>
             </template>
             <template v-slot:[`item.actions`]="{ item }">
-              <v-btn
-                rounded="pill"
-                color="primary"
-                prepend-icon="mdi-share"
-                @click="goToDetailPage(getItemData(item))"
-              >
-                Detail
-              </v-btn>
-              <v-btn
-                class="ml-2"
-                rounded="pill"
-                color="secondary"
-                prepend-icon="mdi-open-in-new"
-                @click="openDetailInNewTab(getItemData(item))"
-              >
-                Open
-              </v-btn>
-              <v-btn
-                class="ml-2"
-                rounded="pill"
-                color="tertiary"
-                prepend-icon="mdi-content-copy"
-                @click="copyLink(getItemData(item))"
-              >
-                Copy Link
-              </v-btn>
+              <template v-if="!getItemData(item)">
+                <span class="text-caption text-grey">-</span>
+              </template>
+              <template v-else>
+                <v-btn
+                  rounded="pill"
+                  color="primary"
+                  prepend-icon="mdi-share"
+                  @click="goToDetailPage(getItemData(item)!)"
+                >
+                  Detail
+                </v-btn>
+                <v-btn
+                  class="ml-2"
+                  rounded="pill"
+                  color="tertiary"
+                  prepend-icon="mdi-content-copy"
+                  @click="copyLink(getItemData(item)!)"
+                >
+                  Copy Link
+                </v-btn>
+              </template>
             </template>
             <template v-slot:[`item.name`]="{ item }">
-              <span v-html="highlightMatch(getItemData(item).name)"></span>
+              <template v-if="!getItemData(item)">-</template>
+              <template v-else>
+                <span v-html="highlightMatch(getItemData(item)!.name)"></span>
+              </template>
             </template>
             <template v-slot:[`item.molecular_formula`]="{ item }">
-              <div v-html="getItemData(item).molecular_formula"></div>
+              <template v-if="!getItemData(item)">-</template>
+              <template v-else>
+                <div v-html="(getItemData(item) as any).molecular_formula || '-'"></div>
+              </template>
             </template>
             <template v-slot:[`item.form`]="{ item }">
-              <div class="no-katex-html" v-html="getFormattedProtonationForm(getItemData(item).form)"></div>
+              <template v-if="!getItemData(item)">-</template>
+              <template v-else>
+                <div class="no-katex-html" v-html="getFormattedProtonationForm(getItemData(item)!.form)"></div>
+              </template>
             </template>
             <template v-slot:[`item.metal_charge`]="{ item }">
-              <v-chip class="ma-1" color="blue" @click="filterByMetal(getItemData(item).central_element)">
-                {{ (getItemData(item).metal_charge > 0 ? `+${getItemData(item).metal_charge}` : getItemData(item).metal_charge) }}
-              </v-chip>
+              <template v-if="!getItemData(item)">-</template>
+              <template v-else>
+                <v-chip class="ma-1" color="blue" @click="filterByMetal(getItemData(item)!.central_element)">
+                  {{ getItemData(item)!.metal_charge }}
+                </v-chip>
+              </template>
             </template>
             <template v-slot:[`item.formula_string`]="{ item }">
-              <div class="no-katex-html" v-html="getFormattedMetalForm(getItemData(item).formula_string)"></div>
+              <template v-if="!getItemData(item)">-</template>
+              <template v-else>
+                <div class="no-katex-html" v-html="getFormattedMetalForm(getItemData(item)!.formula_string)"></div>
+              </template>
             </template>
           </v-data-table>
         </v-col>
@@ -252,6 +248,43 @@ export default defineComponent({
     ],
     expandedRows: [] as any[]
   }),
+  computed: {
+    sortedSearchResult(): LigandSearchResultModel[] {
+      // Instead of grouping (which hides columns), sort by selected fields
+      // This keeps all columns visible while organizing data
+      if (this.groupBy.length === 0) {
+        return this.searchResult;
+      }
+
+      // Sort by the selected fields in order
+      const sorted = [...this.searchResult].sort((a, b) => {
+        for (const group of this.groupBy) {
+          const key = group.key as keyof LigandSearchResultModel;
+          const aVal = (a as any)[key];
+          const bVal = (b as any)[key];
+          
+          // Handle undefined/null values
+          if (aVal === undefined || aVal === null) {
+            if (bVal === undefined || bVal === null) continue;
+            return 1; // undefined goes to end
+          }
+          if (bVal === undefined || bVal === null) return -1;
+          
+          // Compare values (handle strings and numbers)
+          if (typeof aVal === 'string' && typeof bVal === 'string') {
+            const cmp = aVal.localeCompare(bVal);
+            if (cmp !== 0) return cmp;
+          } else {
+            if (aVal < bVal) return -1;
+            if (aVal > bVal) return 1;
+          }
+        }
+        return 0;
+      });
+
+      return sorted;
+    }
+  },
   watch: {
     expandedRows: {
       handler(newVal: any[], oldVal: any[]) {
@@ -259,12 +292,6 @@ export default defineComponent({
         // When a row is expanded, load constants if not already loaded
         for (const row of newVal) {
           if (row) {
-            // Skip if this is a group header (has 'value' and 'items' properties)
-            if (row.value !== undefined && row.items !== undefined) {
-              console.log('Skipping group header:', row.value);
-              continue;
-            }
-            
             // Try to extract data from the row - it might be the item directly or wrapped
             const itemData = this.getItemData(row);
             if (itemData && itemData.ligand_id !== undefined && itemData.metal_id !== undefined) {
@@ -274,7 +301,7 @@ export default defineComponent({
                 console.log('Loading constants for', metalKey);
                 this.loadConstants(itemData);
               }
-            } else {
+            } else if (itemData) {
               console.log('Row expanded but item missing required IDs. itemData:', itemData, 'row:', row, 'row keys:', row ? Object.keys(row) : 'null');
             }
           }
@@ -298,23 +325,16 @@ export default defineComponent({
       this.groupBy = temp
     },
     getItemData(item: any): LigandSearchResultModel | null {
-      // In grouped tables, item might be the data directly or wrapped in item.raw
-      // Also check for item.item which is sometimes used in Vuetify data tables
+      // Extract data from item - could be in item, item.raw, or item.item
       if (!item) {
-        console.warn('getItemData: item is null or undefined');
-        return null;
-      }
-      
-      // Skip group headers (they have 'value' and 'items' properties)
-      if (item.value !== undefined && item.items !== undefined) {
         return null;
       }
       
       // Try different ways to extract the data
       let data = item;
-      if (item.raw) {
+      if (item.raw && typeof item.raw === 'object') {
         data = item.raw;
-      } else if (item.item) {
+      } else if (item.item && typeof item.item === 'object') {
         data = item.item;
       }
       
@@ -326,7 +346,6 @@ export default defineComponent({
         }
       }
       
-      console.warn('getItemData: Could not extract valid data from item', item, 'data:', data);
       return null;
     },
     getMetalKey(item: LigandSearchResultModel): string {
@@ -385,28 +404,10 @@ export default defineComponent({
       }
 
       const store = searchResultStore()
-      store.selectedSearchResult = item
+      store.selectedSearchResult = item as any
       console.log('Set selectedSearchResult in store:', store.selectedSearchResult);
 
       this.$router.push('/detail-view')
-    },
-    openDetailInNewTab(item: LigandSearchResultModel){
-      console.log('openDetailInNewTab called with item:', item);
-      console.log('item.ligand_id:', item?.ligand_id, 'item.metal_id:', item?.metal_id);
-      
-      // Validate required fields
-      if (!item || !item.ligand_id || !item.metal_id) {
-        console.error('Invalid item passed to openDetailInNewTab:', item);
-        alert('Error: Missing required data (ligand_id or metal_id). Please try selecting a different result.');
-        return;
-      }
-
-      const store = searchResultStore()
-      store.selectedSearchResult = item as any
-      console.log('Set selectedSearchResult in store for new tab:', store.selectedSearchResult);
-      
-      const url = `${window.location.origin}/#/detail-view`;
-      window.open(url, '_blank')
     },
     async copyLink(item: LigandSearchResultModel){
       const url = `${window.location.origin}/#/detail-view`
@@ -448,7 +449,8 @@ export default defineComponent({
     }
 
     this.searchResult = store.searchResult
-    this.groupBy = [{key: 'name'}, {key: 'central_element'}]
+    // Start with NO grouping - show flat table so all columns are visible
+    this.groupBy = []
 
     this.groupKeys = []
     for(const key of store.getKeys){
