@@ -4,7 +4,6 @@
     <br />
 
     <!-- Each component corresponds to a single table in the database -->
-    <!-- Current known bugs: Ligand Molecular Formula is not correctly writing to the parent variable -->
 
     <MetalInfo :isLoading="isLoading" @entry="updateField" />
 
@@ -26,9 +25,36 @@
       block
       class="mt-2"
       color="primary"
+      :loading="isSubmitting"
+      :disabled="isSubmitting"
       @click="submitForm"
       >Submit</v-btn
     >
+    
+    <!-- Success/Error Messages -->
+    <v-snackbar
+      v-model="showSuccessMessage"
+      color="success"
+      timeout="5000"
+      location="top"
+    >
+      Entry submitted successfully!
+      <template v-slot:actions>
+        <v-btn variant="text" @click="showSuccessMessage = false">Close</v-btn>
+      </template>
+    </v-snackbar>
+    
+    <v-snackbar
+      v-model="showErrorMessage"
+      color="error"
+      timeout="10000"
+      location="top"
+    >
+      {{ errorMessage }}
+      <template v-slot:actions>
+        <v-btn variant="text" @click="showErrorMessage = false">Close</v-btn>
+      </template>
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -65,24 +91,26 @@ import { AccessTokenResponse } from "@/models/UserData";
 
 // POSTs the data to backend API endpoint. Reciever is currently in wrascal-ts-2024
 // repository, under src/controllers/rest/api/WriteController.ts
-async function postJSON(data: writeRequest) {
-  try {
-    const response = await fetch(
-      `${import.meta.env.VITE_BACKEND_ADDR}/rest/write/db`,
-      {
-        // change before deoloy
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      }
-    );
-    const result = await response.json();
-    console.log("Success:", result);
-  } catch (error) {
-    console.error("Error:", error);
+async function postJSON(data: writeRequest): Promise<any> {
+  const response = await fetch(
+    `${import.meta.env.VITE_BACKEND_ADDR}/rest/write/db`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Server error: ${response.status} ${response.statusText}`);
   }
+  
+  const result = await response.json();
+  console.log("Success:", result);
+  return result;
 }
 
 // Defines the HTML so that it can be used as a component in the vue frame on the site
@@ -123,7 +151,7 @@ export default defineComponent({
 
     // ligand information
     ligand_name: "",
-    ligand_molecular_formala: "",
+    ligand_molecular_formula: "",
     ligand_form_protonation: "",
     ligand_form_charge: "",
     ligand_charge: "",
@@ -155,13 +183,68 @@ export default defineComponent({
     //footnote info
     note_type: "",
     note_content: "",
+    
+    // UI state
+    isSubmitting: false,
+    showSuccessMessage: false,
+    showErrorMessage: false,
+    errorMessage: "",
   }),
   methods: {
-    submitForm() {
-      console.log("ligand molecular formula", this.ligand_molecular_formala);
+    validateForm(): string[] {
+      const errors: string[] = [];
+      
+      // Required fields validation
+      if (!this.metal_central_element) {
+        errors.push("Metal central element is required");
+      }
+      if (!this.ligand_name) {
+        errors.push("Ligand name is required");
+      }
+      if (!this.expression_string) {
+        errors.push("Expression string is required");
+      }
+      if (!this.constants_value || isNaN(parseInt(this.constants_value))) {
+        errors.push("Valid constant value is required");
+      }
+      if (!this.conditions_constant_kind) {
+        errors.push("Constant kind is required");
+      }
+      
+      // Validate numeric fields
+      if (this.metal_charge && isNaN(parseInt(this.metal_charge))) {
+        errors.push("Metal charge must be a valid number");
+      }
+      if (this.ligand_charge && isNaN(parseInt(this.ligand_charge))) {
+        errors.push("Ligand charge must be a valid number");
+      }
+      if (this.conditions_temperature && isNaN(parseInt(this.conditions_temperature))) {
+        errors.push("Temperature must be a valid number");
+      }
+      if (this.conditions_ionic_strength && isNaN(parseInt(this.conditions_ionic_strength))) {
+        errors.push("Ionic strength must be a valid number");
+      }
+      
+      return errors;
+    },
+    async submitForm() {
+      // Validate form
+      const validationErrors = this.validateForm();
+      if (validationErrors.length > 0) {
+        this.errorMessage = "Please fix the following errors:\n" + validationErrors.join("\n");
+        this.showErrorMessage = true;
+        return;
+      }
+      
+      this.isSubmitting = true;
+      this.showErrorMessage = false;
+      this.showSuccessMessage = false;
+      
+      try {
+        console.log("ligand molecular formula", this.ligand_molecular_formula);
 
-      // assembling the data into individual interfaces makes json structure easier to read and parse by the backend,
-      // even though it's somewhat bloated here. Is there perhaps a better way to do this?
+        // assembling the data into individual interfaces makes json structure easier to read and parse by the backend,
+        // even though it's somewhat bloated here. Is there perhaps a better way to do this?
 
       const metalinfo: MetalData = {
         central_element: this.metal_central_element,
@@ -171,10 +254,8 @@ export default defineComponent({
 
       const ligandinfo: LigandData = {
         name: this.ligand_name ?? "",
-        // known bug - this.ligand_molecular_formula always reads blank, even though the write from the form itself is fine.
-        // the variable is being cleared sometime between when submit is pressed and the value is read here.
         molecular_formula: this.parseMolecularFormula(
-          this.ligand_molecular_formala
+          this.ligand_molecular_formula
         ),
         form: {
           protonation_level: parseInt(this.ligand_form_protonation) ?? 0,
@@ -234,9 +315,55 @@ export default defineComponent({
         footnotesInfo: footnoteinfo,
       };
 
-      console.log("Sending Request");
-      console.log(JSON.stringify(writeData));
-      postJSON(writeData);
+        console.log("Sending Request");
+        console.log(JSON.stringify(writeData));
+        
+        const response = await postJSON(writeData);
+        
+        if (response && response.error) {
+          throw new Error(response.error);
+        }
+        
+        // Success
+        this.showSuccessMessage = true;
+        // Reset form after successful submission
+        setTimeout(() => {
+          this.resetForm();
+        }, 2000);
+      } catch (error: any) {
+        console.error("Error submitting form:", error);
+        this.errorMessage = error?.message || "Failed to submit entry. Please try again.";
+        this.showErrorMessage = true;
+      } finally {
+        this.isSubmitting = false;
+      }
+    },
+    resetForm() {
+      // Reset all form fields
+      this.metal_central_element = "";
+      this.metal_formula_string = "";
+      this.metal_charge = "";
+      this.ligand_name = "";
+      this.ligand_molecular_formula = "";
+      this.ligand_form_protonation = "";
+      this.ligand_form_charge = "";
+      this.ligand_charge = "";
+      this.ligand_categories = "";
+      this.conditions_constant_kind = "";
+      this.conditions_temperature = "";
+      this.conditions_temperature_varies = false;
+      this.conditions_ionic_strength = "";
+      this.expression_string = "";
+      this.products = "";
+      this.reactants = "";
+      this.constants_value = "";
+      this.constants_significant_figures = "";
+      this.direction = "";
+      this.magnitude = "";
+      this.litref = "";
+      this.litcode = "";
+      this.note_type = "";
+      this.note_content = "";
     },
 
     updateField(input: { fieldToChange: String; dataToSend: any }) {

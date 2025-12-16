@@ -26,7 +26,9 @@
             Return To Search Page
           </v-btn>
           <v-spacer></v-spacer>
-          <div class="text-caption mr-3">{{ searchResult.length }} result(s)</div>
+          <div class="text-caption mr-3">
+            {{ filteredSearchResult.length }} of {{ searchResult.length }} result(s)
+          </div>
           <v-select
             :items="pageSizeOptions"
             v-model="itemsPerPage"
@@ -37,17 +39,104 @@
         </v-card-actions>
       </v-card>
 
+      <!-- Search Filters -->
+      <v-card v-if="searchResult.length > 0" class="mt-6 mb-4" variant="outlined">
+        <v-card-title class="text-subtitle-1">Filter Results</v-card-title>
+        <v-card-text>
+          <v-row>
+            <v-col cols="12" md="3">
+              <v-select
+                v-model="filterConstantKind"
+                :items="constantKindOptions"
+                label="Constant Kind"
+                clearable
+                density="compact"
+                variant="outlined"
+              ></v-select>
+            </v-col>
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model.number="filterMinTemperature"
+                label="Min Temperature (°C)"
+                type="number"
+                density="compact"
+                variant="outlined"
+                clearable
+              ></v-text-field>
+            </v-col>
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model.number="filterMaxTemperature"
+                label="Max Temperature (°C)"
+                type="number"
+                density="compact"
+                variant="outlined"
+                clearable
+              ></v-text-field>
+            </v-col>
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model.number="filterMaxIonicStrength"
+                label="Max Ionic Strength (M)"
+                type="number"
+                step="0.1"
+                density="compact"
+                variant="outlined"
+                clearable
+              ></v-text-field>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model="filterMetalCharge"
+                label="Metal Charge"
+                density="compact"
+                variant="outlined"
+                clearable
+                hint="e.g., +1, +2, -1"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model="filterLigandName"
+                label="Ligand Name Contains"
+                density="compact"
+                variant="outlined"
+                clearable
+              ></v-text-field>
+            </v-col>
+            <v-col cols="12" md="6" class="d-flex align-center">
+              <v-btn
+                color="secondary"
+                variant="outlined"
+                @click="clearFilters"
+                class="mr-2"
+              >
+                Clear Filters
+              </v-btn>
+              <span class="text-caption text-grey">
+                Showing {{ filteredSearchResult.length }} of {{ searchResult.length }} results
+              </span>
+            </v-col>
+          </v-row>
+        </v-card-text>
+      </v-card>
+
       <v-row justify="center" class="pt-10">
         <v-col cols="12">
-          <v-alert v-if="searchResult.length === 0" type="info" variant="tonal" border="start" class="mb-6">
+          <v-alert v-if="filteredSearchResult.length === 0 && searchResult.length > 0" type="info" variant="tonal" border="start" class="mb-6">
+            No results match your filters. Try adjusting your filter criteria.
+          </v-alert>
+          <v-alert v-else-if="searchResult.length === 0" type="info" variant="tonal" border="start" class="mb-6">
             No results found. Try a different ligand name or adjust your filters.
           </v-alert>
           <v-data-table
-            v-else
+            v-if="filteredSearchResult.length > 0"
             v-model:items-per-page="itemsPerPage"
             v-model:expanded="expandedRows"
             :headers="headers"
-            :items="sortedSearchResult"
+            :items="sortedFilteredSearchResult"
             item-value="name"
             show-expand
             class="elevation-1"
@@ -246,9 +335,120 @@ export default defineComponent({
       { title: "Ionic Strength (M)", align: "center", key: "ionic_strength" },
       { title: "Value", align: "start", key: "value" },
     ],
-    expandedRows: [] as any[]
+    expandedRows: [] as any[],
+    
+    // Filter state
+    filterConstantKind: null as string | null,
+    filterMinTemperature: null as number | null,
+    filterMaxTemperature: null as number | null,
+    filterMaxIonicStrength: null as number | null,
+    filterMetalCharge: null as string | null,
+    filterLigandName: null as string | null,
+    
+    // Constant kind options
+    constantKindOptions: [
+      'Equilibrium',
+      'Enthalpy',
+      'Entropy',
+      'Gibbs Free Energy'
+    ] as string[]
   }),
   computed: {
+    filteredSearchResult(): LigandSearchResultModel[] {
+      // First apply filters based on search result properties
+      let filtered = this.searchResult.filter((item) => {
+        // Filter by ligand name
+        if (this.filterLigandName && !item.name.toLowerCase().includes(this.filterLigandName.toLowerCase())) {
+          return false;
+        }
+        
+        // Filter by metal charge
+        if (this.filterMetalCharge) {
+          const chargeStr = item.metal_charge?.toString() || '';
+          if (!chargeStr.includes(this.filterMetalCharge)) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
+      // Then filter by constants data if available
+      if (this.filterConstantKind || this.filterMinTemperature !== null || 
+          this.filterMaxTemperature !== null || this.filterMaxIonicStrength !== null) {
+        filtered = filtered.filter((item) => {
+          const metalKey = this.getMetalKey(item);
+          const constants = this.constantsData[metalKey];
+          
+          if (!constants || constants.length === 0) {
+            // If no constants loaded yet, include it (will be filtered when constants load)
+            return true;
+          }
+          
+          // Check if any constant matches the filters
+          return constants.some((constant) => {
+            // Filter by constant kind
+            if (this.filterConstantKind && constant.constant_kind !== this.filterConstantKind) {
+              return false;
+            }
+            
+            // Filter by temperature range
+            if (this.filterMinTemperature !== null && 
+                (constant.temperature === undefined || constant.temperature < this.filterMinTemperature)) {
+              return false;
+            }
+            if (this.filterMaxTemperature !== null && 
+                (constant.temperature === undefined || constant.temperature > this.filterMaxTemperature)) {
+              return false;
+            }
+            
+            // Filter by ionic strength
+            if (this.filterMaxIonicStrength !== null && 
+                (constant.ionic_strength === undefined || constant.ionic_strength > this.filterMaxIonicStrength)) {
+              return false;
+            }
+            
+            return true;
+          });
+        });
+      }
+      
+      return filtered;
+    },
+    sortedFilteredSearchResult(): LigandSearchResultModel[] {
+      // Sort the filtered results
+      if (this.groupBy.length === 0) {
+        return this.filteredSearchResult;
+      }
+
+      // Sort by the selected fields in order
+      const sorted = [...this.filteredSearchResult].sort((a, b) => {
+        for (const group of this.groupBy) {
+          const key = group.key as keyof LigandSearchResultModel;
+          const aVal = (a as any)[key];
+          const bVal = (b as any)[key];
+          
+          // Handle undefined/null values
+          if (aVal === undefined || aVal === null) {
+            if (bVal === undefined || bVal === null) continue;
+            return 1; // undefined goes to end
+          }
+          if (bVal === undefined || bVal === null) return -1;
+          
+          // Compare values (handle strings and numbers)
+          if (typeof aVal === 'string' && typeof bVal === 'string') {
+            const cmp = aVal.localeCompare(bVal);
+            if (cmp !== 0) return cmp;
+          } else {
+            if (aVal < bVal) return -1;
+            if (aVal > bVal) return 1;
+          }
+        }
+        return 0;
+      });
+
+      return sorted;
+    },
     sortedSearchResult(): LigandSearchResultModel[] {
       // Instead of grouping (which hides columns), sort by selected fields
       // This keeps all columns visible while organizing data
@@ -437,6 +637,14 @@ export default defineComponent({
       const store = searchResultStore()
       // naive filter: filter current results in-memory
       this.searchResult = store.searchResult.filter(r => r.central_element === metal)
+    },
+    clearFilters() {
+      this.filterConstantKind = null;
+      this.filterMinTemperature = null;
+      this.filterMaxTemperature = null;
+      this.filterMaxIonicStrength = null;
+      this.filterMetalCharge = null;
+      this.filterLigandName = null;
     }
   },
   mounted() {
