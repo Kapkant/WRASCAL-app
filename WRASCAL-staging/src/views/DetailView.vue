@@ -1091,15 +1091,30 @@ export default defineComponent({
     checkLoadingComplete() {
       // Set isLoading to false once all data has been attempted to load
       // We check if constants have been loaded (or failed after retries)
-      if (this.failedConstantCount >= 3 || this.constants.length > 0 || this.originalData.length > 0 || this.noDataAvailable) {
-        // Also check if mol data and references have completed (or failed)
-        const molDataDone = this.molData !== null || this.failedMolDataCount >= 3;
-        const referencesDone = this.references.length > 0 || this.failedReferenceCount >= 3;
-        const constantsDone = this.constants.length > 0 || this.originalData.length > 0 || this.noDataAvailable || this.failedConstantCount >= 3;
-        
-        if (constantsDone && molDataDone && referencesDone) {
-          this.isLoading = false;
-        }
+      const constantsDone = this.constants.length > 0 || this.originalData.length > 0 || this.noDataAvailable || this.failedConstantCount >= 3;
+      const molDataDone = this.molData !== null || this.failedMolDataCount >= 3;
+      // References are done if we have data, empty array (no references), or failed after retries
+      const referencesDone = Array.isArray(this.references) || this.failedReferenceCount >= 3;
+      
+      console.log('DetailView.checkLoadingComplete:', {
+        constantsDone,
+        constantsLength: this.constants.length,
+        failedConstantCount: this.failedConstantCount,
+        molDataDone,
+        molData: this.molData !== null,
+        failedMolDataCount: this.failedMolDataCount,
+        referencesDone,
+        referencesIsArray: Array.isArray(this.references),
+        referencesLength: Array.isArray(this.references) ? this.references.length : 'not array',
+        failedReferenceCount: this.failedReferenceCount,
+        allDone: constantsDone && molDataDone && referencesDone
+      });
+      
+      if (constantsDone && molDataDone && referencesDone) {
+        console.log('DetailView.checkLoadingComplete: All data loaded, setting isLoading = false');
+        this.isLoading = false;
+      } else {
+        console.log('DetailView.checkLoadingComplete: Still waiting for data...');
       }
     },
     async loadMolData() {
@@ -1185,29 +1200,44 @@ export default defineComponent({
       this.checkLoadingComplete();
     },
     loadReferences() {
+      console.log('DetailView.loadReferences: Starting API call');
       if (!this.selectedSearchResult || !this.selectedSearchResult.ligand_id) {
+        console.error('DetailView.loadReferences: Missing ligand_id');
+        this.failedReferenceCount += 1;
         this.failedResources.push({
           resourceName: "References",
           detail: "Missing ligand_id",
-          action: () => this.loadReferences(),
+          action: () => {
+            this.failedReferenceCount = 0;
+            this.loadReferences();
+          },
         });
+        this.checkLoadingComplete();
         return;
       }
 
+      console.log('DetailView.loadReferences: Calling API for ligand_id:', this.selectedSearchResult.ligand_id);
       getReferences(this.selectedSearchResult.ligand_id)
         .then((result) => {
+          console.log('DetailView.loadReferences: API response received', result ? `result length: ${result.length}` : 'result is null/undefined');
           if (!result) {
+            // Empty result - mark as done
+            this.references = [];
             this.checkLoadingComplete();
             return;
           }
 
           this.references = result;
+          console.log('DetailView.loadReferences: References loaded, count:', result.length);
           this.checkLoadingComplete();
         })
         .catch(async (err) => {
+          console.error('DetailView.loadReferences: API call failed', err);
           this.failedReferenceCount += 1;
+          console.log('DetailView.loadReferences: Failed attempt:', this.failedReferenceCount);
 
           if (this.failedReferenceCount < 3) {
+            console.log('DetailView.loadReferences: Retrying in', 500 * this.failedReferenceCount, 'ms');
             await new Promise((r) =>
               setTimeout(r, 500 * this.failedReferenceCount)
             );
@@ -1215,10 +1245,14 @@ export default defineComponent({
             return;
           }
 
+          console.error('DetailView.loadReferences: Max retries reached, giving up');
           this.failedResources.push({
             resourceName: "References",
-            detail: err,
-            action: () => this.loadReferences(),
+            detail: err?.message || String(err),
+            action: () => {
+              this.failedReferenceCount = 0;
+              this.loadReferences();
+            },
           });
           
           this.checkLoadingComplete();
