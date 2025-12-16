@@ -546,6 +546,15 @@ export default defineComponent({
 
       return sorted;
     },
+    molViewStyle(): string {
+      const background = this.theme.global.current.value.dark
+        ? "gray"
+        : "transparent";
+
+      return `height: 400px; background: ${background}; ${
+        this.molLoaded ? "" : "display: none;"
+      }`;
+    },
   },
   methods: {
     async loadPreviewScripts() {
@@ -637,54 +646,29 @@ export default defineComponent({
           return null;
         }
         
-        // Group headers in Vuetify have a 'depth' property - this is the most reliable check
-        if (item.depth !== undefined) {
-          return null;
-        }
-        
-        // Extract data - could be in item, item.raw, or item.item
+        // Since we removed :group-by, Vuetify should pass items directly
+        // But it might still wrap them in item.raw, so check for that
+        // Also check for item.item in case of any other wrapping
         let data = item;
-        if (item.raw && typeof item.raw === 'object' && item.raw.depth === undefined) {
+        if (item.raw && typeof item.raw === 'object') {
           data = item.raw;
-        } else if (item.item && typeof item.item === 'object' && item.item.depth === undefined) {
+        } else if (item.item && typeof item.item === 'object') {
           data = item.item;
         }
         
-        // CRITICAL: Only return data if it has properties that ONLY data items have
-        // Group headers won't have these properties
-        const hasExpression = data.expression_string !== undefined;
-        const hasConstantKind = data.constant_kind !== undefined;
-        const hasTemperature = data.temperature !== undefined;
-        const hasValue = data.value !== undefined && typeof data.value === 'number';
-        
-        // Must have at least one of these to be a valid data item
-        if (hasExpression || hasConstantKind || hasTemperature || hasValue) {
-          return data;
-        }
-        
-        // If it has 'items' array but no data properties, it's definitely a group header
-        if (data.items && Array.isArray(data.items)) {
+        // If it's a group header (has depth property), return null
+        // This shouldn't happen anymore since we removed grouping, but keep as safety check
+        if (data.depth !== undefined || (data.items && Array.isArray(data.items) && !data.expression_string)) {
+          console.warn('DetailView.getItemData: Detected potential group header (should not happen without grouping)', {
+            hasDepth: data.depth !== undefined,
+            hasItems: !!data.items,
+            hasExpression: data.expression_string !== undefined
+          });
           return null;
         }
         
-        // Log when we can't identify the item - this is the critical diagnostic info
-        console.error('DetailView.getItemData: UNKNOWN ITEM TYPE - cannot determine if group header or data', {
-          itemKeys: item && typeof item === 'object' ? Object.keys(item) : 'null/undefined',
-          itemType: typeof item,
-          hasRaw: item && item.raw ? !!item.raw : false,
-          hasItem: item && item.item ? !!item.item : false,
-          hasDepth: item && item.depth !== undefined,
-          hasItems: item && item.items ? !!item.items : false,
-          dataKeys: data && typeof data === 'object' ? Object.keys(data) : 'null/undefined',
-          dataHasExpression: hasExpression,
-          dataHasConstantKind: hasConstantKind,
-          dataHasTemperature: hasTemperature,
-          dataHasValue: hasValue,
-          fullItem: item ? JSON.stringify(item, null, 2).substring(0, 500) : 'null/undefined' // Limit to first 500 chars
-        });
-        
-        // Otherwise, not a valid data item
-        return null;
+        // Return the data object - it should be a valid constant item from sortedConstants
+        return data;
       } catch (error) {
         console.error('DetailView.getItemData: EXCEPTION', error, {
           item: item ? Object.keys(item) : 'null',
@@ -1329,17 +1313,6 @@ export default defineComponent({
       immediate: true,
       deep: true
     }
-  },
-  computed: {
-    molViewStyle(): string {
-      const background = this.theme.global.current.value.dark
-        ? "gray"
-        : "transparent";
-
-      return `height: 400px; background: ${background}; ${
-        this.molLoaded ? "" : "display: none;"
-      }`;
-    },
   },
 });
 </script>
