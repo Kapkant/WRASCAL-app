@@ -1104,11 +1104,13 @@ export default defineComponent({
     },
     async loadMolData() {
       if (!this.selectedSearchResult || !this.selectedSearchResult.ligand_id) {
+        this.failedMolDataCount += 1;
         this.failedResources.push({
           resourceName: "MolData",
           detail: "Missing ligand_id",
           action: () => this.loadMolData(),
         });
+        this.checkLoadingComplete();
         return;
       }
 
@@ -1130,7 +1132,7 @@ export default defineComponent({
           return;
         }
       } catch (err) {
-        console.log("Real API failed, trying mock data...");
+        console.log("Real API failed, trying mock data...", err);
       }
 
       // Fallback to mock data
@@ -1155,11 +1157,29 @@ export default defineComponent({
         console.error("Mock data also failed:", mockErr);
       }
 
-      // If both fail, show error
+      // If both fail, increment failure count and retry if needed
+      this.failedMolDataCount += 1;
+      console.log("MolData failed, attempt:", this.failedMolDataCount);
+
+      if (this.failedMolDataCount < 3) {
+        // Retry after a delay
+        console.log("Retrying mol data in", 500 * this.failedMolDataCount, "ms");
+        await new Promise((r) =>
+          setTimeout(r, 500 * this.failedMolDataCount)
+        );
+        this.loadMolData();
+        return;
+      }
+
+      // Max retries reached, show error and stop loading
+      console.error("Max mol data retries reached, giving up");
       this.failedResources.push({
         resourceName: "MolData",
-        detail: "Both real API and mock data failed",
-        action: () => this.loadMolData(),
+        detail: "Both real API and mock data failed after 3 attempts",
+        action: () => {
+          this.failedMolDataCount = 0;
+          this.loadMolData();
+        },
       });
       
       this.checkLoadingComplete();
