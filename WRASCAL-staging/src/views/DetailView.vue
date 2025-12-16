@@ -29,9 +29,10 @@
         class="text-caption text-left mt-8"
         v-if="this.failedResources.length !== 0"
       >
+        <!-- Critical errors (Constants, References) -->
         <v-alert
           class="mt-5"
-          v-for="failed in this.failedResources"
+          v-for="failed in this.failedResources.filter(f => f.resourceName !== 'MolData')"
           v-bind:key="failed.resourceName"
           density="compact"
           type="error"
@@ -43,8 +44,24 @@
           server. You can click [Retry All] button to reload. Detail:
           {{ failed.detail }}
         </v-alert>
-        <v-divider class="mt-2 mb-2"></v-divider>
-        <div class="d-flex">
+        
+        <!-- Optional warnings (MolData) -->
+        <v-alert
+          class="mt-5"
+          v-for="failed in this.failedResources.filter(f => f.resourceName === 'MolData')"
+          v-bind:key="failed.resourceName"
+          density="compact"
+          type="warning"
+          variant="tonal"
+          closable
+          close-label="Close Alert"
+          title="Molecular Preview Unavailable"
+        >
+          Molecular structure preview is not available for this compound. All other data (constants, references) is still accessible. {{ failed.detail }}
+        </v-alert>
+        
+        <v-divider v-if="this.failedResources.filter(f => f.resourceName !== 'MolData').length > 0" class="mt-2 mb-2"></v-divider>
+        <div v-if="this.failedResources.filter(f => f.resourceName !== 'MolData').length > 0" class="d-flex">
           <v-spacer></v-spacer>
           <v-btn
             color="info"
