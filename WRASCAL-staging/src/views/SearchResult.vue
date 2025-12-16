@@ -108,6 +108,15 @@
             </v-col>
             <v-col cols="12" md="6" class="d-flex align-center">
               <v-btn
+                color="primary"
+                variant="elevated"
+                @click="applyFilters"
+                class="mr-2"
+                prepend-icon="mdi-filter"
+              >
+                Apply Filters
+              </v-btn>
+              <v-btn
                 color="secondary"
                 variant="outlined"
                 @click="clearFilters"
@@ -115,7 +124,7 @@
               >
                 Clear Filters
               </v-btn>
-              <span class="text-caption text-grey">
+              <span class="text-caption text-grey ml-2">
                 Showing {{ filteredSearchResult.length }} of {{ searchResult.length }} results
               </span>
             </v-col>
@@ -345,6 +354,14 @@ export default defineComponent({
     filterMetalCharge: null as string | null,
     filterLigandName: null as string | null,
     
+    // Active filters (applied filters)
+    activeFilterConstantKind: null as string | null,
+    activeFilterMinTemperature: null as number | null,
+    activeFilterMaxTemperature: null as number | null,
+    activeFilterMaxIonicStrength: null as number | null,
+    activeFilterMetalCharge: null as string | null,
+    activeFilterLigandName: null as string | null,
+    
     // Constant kind options
     constantKindOptions: [
       'Equilibrium',
@@ -355,17 +372,18 @@ export default defineComponent({
   }),
   computed: {
     filteredSearchResult(): LigandSearchResultModel[] {
+      // Use active filters (applied filters) instead of current filter values
       // First apply filters based on search result properties
       let filtered = this.searchResult.filter((item) => {
         // Filter by ligand name
-        if (this.filterLigandName && !item.name.toLowerCase().includes(this.filterLigandName.toLowerCase())) {
+        if (this.activeFilterLigandName && !item.name.toLowerCase().includes(this.activeFilterLigandName.toLowerCase())) {
           return false;
         }
         
         // Filter by metal charge
-        if (this.filterMetalCharge) {
+        if (this.activeFilterMetalCharge) {
           const chargeStr = item.metal_charge?.toString() || '';
-          if (!chargeStr.includes(this.filterMetalCharge)) {
+          if (!chargeStr.includes(this.activeFilterMetalCharge)) {
             return false;
           }
         }
@@ -374,37 +392,38 @@ export default defineComponent({
       });
       
       // Then filter by constants data if available
-      if (this.filterConstantKind || this.filterMinTemperature !== null || 
-          this.filterMaxTemperature !== null || this.filterMaxIonicStrength !== null) {
+      if (this.activeFilterConstantKind || this.activeFilterMinTemperature !== null || 
+          this.activeFilterMaxTemperature !== null || this.activeFilterMaxIonicStrength !== null) {
         filtered = filtered.filter((item) => {
           const metalKey = this.getMetalKey(item);
           const constants = this.constantsData[metalKey];
           
           if (!constants || constants.length === 0) {
             // If no constants loaded yet, include it (will be filtered when constants load)
+            // But we can try to load constants for visible items
             return true;
           }
           
           // Check if any constant matches the filters
           return constants.some((constant) => {
             // Filter by constant kind
-            if (this.filterConstantKind && constant.constant_kind !== this.filterConstantKind) {
+            if (this.activeFilterConstantKind && constant.constant_kind !== this.activeFilterConstantKind) {
               return false;
             }
             
             // Filter by temperature range
-            if (this.filterMinTemperature !== null && 
-                (constant.temperature === undefined || constant.temperature < this.filterMinTemperature)) {
+            if (this.activeFilterMinTemperature !== null && 
+                (constant.temperature === undefined || constant.temperature < this.activeFilterMinTemperature)) {
               return false;
             }
-            if (this.filterMaxTemperature !== null && 
-                (constant.temperature === undefined || constant.temperature > this.filterMaxTemperature)) {
+            if (this.activeFilterMaxTemperature !== null && 
+                (constant.temperature === undefined || constant.temperature > this.activeFilterMaxTemperature)) {
               return false;
             }
             
             // Filter by ionic strength
-            if (this.filterMaxIonicStrength !== null && 
-                (constant.ionic_strength === undefined || constant.ionic_strength > this.filterMaxIonicStrength)) {
+            if (this.activeFilterMaxIonicStrength !== null && 
+                (constant.ionic_strength === undefined || constant.ionic_strength > this.activeFilterMaxIonicStrength)) {
               return false;
             }
             
@@ -638,13 +657,42 @@ export default defineComponent({
       // naive filter: filter current results in-memory
       this.searchResult = store.searchResult.filter(r => r.central_element === metal)
     },
+    applyFilters() {
+      // Copy current filter values to active filters
+      this.activeFilterConstantKind = this.filterConstantKind;
+      this.activeFilterMinTemperature = this.filterMinTemperature;
+      this.activeFilterMaxTemperature = this.filterMaxTemperature;
+      this.activeFilterMaxIonicStrength = this.filterMaxIonicStrength;
+      this.activeFilterMetalCharge = this.filterMetalCharge;
+      this.activeFilterLigandName = this.filterLigandName;
+      
+      // Load constants for filtered items if they need constants-based filtering
+      if (this.activeFilterConstantKind || this.activeFilterMinTemperature !== null || 
+          this.activeFilterMaxTemperature !== null || this.activeFilterMaxIonicStrength !== null) {
+        // Load constants for items that don't have them yet
+        this.filteredSearchResult.forEach((item) => {
+          const metalKey = this.getMetalKey(item);
+          if (!this.constantsData[metalKey] && !this.loadingConstants[metalKey]) {
+            this.loadConstants(item);
+          }
+        });
+      }
+    },
     clearFilters() {
+      // Clear both current and active filters
       this.filterConstantKind = null;
       this.filterMinTemperature = null;
       this.filterMaxTemperature = null;
       this.filterMaxIonicStrength = null;
       this.filterMetalCharge = null;
       this.filterLigandName = null;
+      
+      this.activeFilterConstantKind = null;
+      this.activeFilterMinTemperature = null;
+      this.activeFilterMaxTemperature = null;
+      this.activeFilterMaxIonicStrength = null;
+      this.activeFilterMetalCharge = null;
+      this.activeFilterLigandName = null;
     }
   },
   mounted() {
