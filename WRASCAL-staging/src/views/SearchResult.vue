@@ -29,6 +29,33 @@
           <div class="text-caption mr-3">
             {{ filteredSearchResult.length }} of {{ searchResult.length }} result(s)
           </div>
+          <v-menu v-if="filteredSearchResult.length > 0">
+            <template v-slot:activator="{ props }">
+              <v-btn
+                v-bind="props"
+                color="primary"
+                variant="outlined"
+                prepend-icon="mdi-download"
+                class="mr-2"
+              >
+                Export
+              </v-btn>
+            </template>
+            <v-list>
+              <v-list-item @click="exportToCSV">
+                <v-list-item-title>
+                  <v-icon class="mr-2">mdi-file-excel</v-icon>
+                  Export to CSV
+                </v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="exportToJSON">
+                <v-list-item-title>
+                  <v-icon class="mr-2">mdi-code-json</v-icon>
+                  Export to JSON
+                </v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
           <v-select
             :items="pageSizeOptions"
             v-model="itemsPerPage"
@@ -321,10 +348,11 @@ export default defineComponent({
         title: 'Name',
         align: 'start',
         key: 'name',
+        sortable: true,
       },
-      { title: 'Protonation Level', align: 'end', key: 'form' },
-      { title: 'Metal Charge', align: 'end', key: 'metal_charge' },
-      { title: 'Formula String', align: 'end', key: 'formula_string'}
+      { title: 'Protonation Level', align: 'end', key: 'form', sortable: true },
+      { title: 'Metal Charge', align: 'end', key: 'metal_charge', sortable: true },
+      { title: 'Formula String', align: 'end', key: 'formula_string', sortable: true }
     ],
     searchResult: [] as LigandSearchResultModel[],
     groupBy: [] as GroupByModel[],
@@ -693,6 +721,92 @@ export default defineComponent({
       this.activeFilterMaxIonicStrength = null;
       this.activeFilterMetalCharge = null;
       this.activeFilterLigandName = null;
+    },
+    exportToCSV() {
+      const data = this.filteredSearchResult;
+      if (data.length === 0) {
+        alert('No data to export');
+        return;
+      }
+
+      // Get all unique keys from all items
+      const allKeys = new Set<string>();
+      data.forEach(item => {
+        Object.keys(item).forEach(key => allKeys.add(key));
+      });
+
+      // Create CSV header
+      const headers = Array.from(allKeys).filter(key => 
+        !['molecular_formula', 'categories'].includes(key)
+      );
+      const csvHeaders = ['Name', 'Ligand Charge', 'Metal Charge', 'Central Element', 
+                          'Ligand ID', 'Metal ID', 'Form', 'Formula String'];
+      
+      // Create CSV rows
+      const csvRows = data.map(item => {
+        return [
+          this.escapeCSV(item.name || ''),
+          item.ligand_charge || '',
+          item.metal_charge || '',
+          item.central_element || '',
+          item.ligand_id || '',
+          item.metal_id || '',
+          item.form || '',
+          item.formula_string || ''
+        ].join(',');
+      });
+
+      // Combine header and rows
+      const csvContent = [csvHeaders.join(','), ...csvRows].join('\n');
+      
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `wrascal_search_results_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+    exportToJSON() {
+      const data = this.filteredSearchResult;
+      if (data.length === 0) {
+        alert('No data to export');
+        return;
+      }
+
+      // Convert to plain objects for JSON export
+      const jsonData = data.map(item => ({
+        name: item.name,
+        ligand_charge: item.ligand_charge,
+        metal_charge: item.metal_charge,
+        central_element: item.central_element,
+        ligand_id: item.ligand_id,
+        metal_id: item.metal_id,
+        form: item.form,
+        formula_string: item.formula_string
+      }));
+
+      const jsonContent = JSON.stringify(jsonData, null, 2);
+      const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `wrascal_search_results_${new Date().toISOString().split('T')[0]}.json`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+    escapeCSV(value: any): string {
+      if (value === null || value === undefined) return '';
+      const stringValue = String(value);
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
     }
   },
   mounted() {

@@ -3,16 +3,24 @@
     <v-responsive class="d-flex align-center text-center fill-height">
       <div class="text-left text-h2">WRASCAL</div>
       <div class="text-left text-h6 pl-2">Whitman Repository of Accepted Stability Constants of Aqueous Ligands</div>
-      <SimpleSearchForm v-if="isSimpleSearch" v-model:ligands="this.ligands" :is-loading="isLoading" @onSearch="searchLigands"/>
-      <AdvanceSearchForm v-else
-                         :is-loading="isLoading"
-                         v-model:ligands="this.ligands"
-                         v-model:metals="this.metals"
-                         v-model:categories="this.categories"
-                         v-model:chemicals="this.chemicals"
-                         v-model:ligand-charges="this.ligandCharges"
-                         v-model:metal-charges="this.metalCharges"
-                         @onSearch="searchLigands"/>
+      <SimpleSearchForm 
+        v-if="isSimpleSearch" 
+        v-model:ligands="this.ligands" 
+        :is-loading="isLoading" 
+        :search-history="searchHistory"
+        @onSearch="searchLigands"
+        @clear-history="clearSearchHistory"
+      />
+      <AdvanceSearchForm 
+        v-else
+        :is-loading="isLoading"
+        v-model:ligands="this.ligands"
+        v-model:metals="this.metals"
+        v-model:categories="this.categories"
+        v-model:chemicals="this.chemicals"
+        v-model:ligand-charges="this.ligandCharges"
+        v-model:metal-charges="this.metalCharges"
+        @onSearch="searchLigands"/>
       <div class="d-flex justify-end mb-6 pt-5">
         <v-btn
           variant="text"
@@ -72,7 +80,8 @@ export default defineComponent({
     categories: '',
     ligandCharges: '',
     metalCharges: '',
-    chemicals: ''
+    chemicals: '',
+    searchHistory: [] as string[]
   }),
   computed: {
     nistIconStyle(): string{
@@ -102,7 +111,9 @@ export default defineComponent({
             return
           }
           store.searchResult = result
-          store.setLastQuery((form.ligands?.split(',') ?? [])[0] ?? '')
+          const query = (form.ligands?.split(',') ?? [])[0] ?? ''
+          store.setLastQuery(query)
+          this.addToSearchHistory(query)
           this.$router.push('/search-result')
         }
         else{
@@ -113,7 +124,9 @@ export default defineComponent({
             return
           }
           store.searchResult = result
-          store.setLastQuery(form.getRequestModel().ligands?.[0] ?? '')
+          const query = form.getRequestModel().ligands?.[0] ?? ''
+          store.setLastQuery(query)
+          this.addToSearchHistory(query)
           this.$router.push('/search-result')
         }
       } catch (e) {
@@ -122,7 +135,36 @@ export default defineComponent({
       } finally {
         this.isLoading = false
       }
+    },
+    addToSearchHistory(query: string) {
+      if (!query || query.trim() === '') return;
+      
+      // Remove if already exists
+      this.searchHistory = this.searchHistory.filter(q => q !== query);
+      // Add to beginning
+      this.searchHistory.unshift(query);
+      // Keep only last 10
+      this.searchHistory = this.searchHistory.slice(0, 10);
+      // Save to localStorage
+      localStorage.setItem('wrascal_search_history', JSON.stringify(this.searchHistory));
+    },
+    clearSearchHistory() {
+      this.searchHistory = [];
+      localStorage.removeItem('wrascal_search_history');
+    },
+    loadSearchHistory() {
+      try {
+        const stored = localStorage.getItem('wrascal_search_history');
+        if (stored) {
+          this.searchHistory = JSON.parse(stored);
+        }
+      } catch (e) {
+        console.error('Failed to load search history:', e);
+      }
     }
+  },
+  mounted() {
+    this.loadSearchHistory();
   }
 })
 

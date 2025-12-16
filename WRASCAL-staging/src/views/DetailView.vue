@@ -250,6 +250,40 @@
         </v-card-actions>
       </v-card>
 
+      <!-- Export Options -->
+      <v-card v-if="sortedConstants.length > 0" class="mt-4 text-left" variant="outlined">
+        <v-card-title class="text-subtitle-1">Export Constants</v-card-title>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-menu>
+            <template v-slot:activator="{ props }">
+              <v-btn
+                v-bind="props"
+                color="primary"
+                variant="outlined"
+                prepend-icon="mdi-download"
+              >
+                Export
+              </v-btn>
+            </template>
+            <v-list>
+              <v-list-item @click="exportConstantsToCSV">
+                <v-list-item-title>
+                  <v-icon class="mr-2">mdi-file-excel</v-icon>
+                  Export to CSV
+                </v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="exportConstantsToJSON">
+                <v-list-item-title>
+                  <v-icon class="mr-2">mdi-code-json</v-icon>
+                  Export to JSON
+                </v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </v-card-actions>
+      </v-card>
+
       <v-data-table
         v-model:items-per-page="itemsPerPage"
         v-model:expanded="expandedRows"
@@ -889,6 +923,101 @@ export default defineComponent({
         totalConstants: this.constants.length,
         willSort: this.groupBy.length > 0
       });
+    },
+    exportConstantsToCSV() {
+      const data = this.sortedConstants;
+      if (data.length === 0) {
+        alert('No constants data to export');
+        return;
+      }
+
+      // CSV headers
+      const csvHeaders = [
+        'Expression',
+        'Constant Kind',
+        'Temperature (°C)',
+        'Ionic Strength (M)',
+        'Value',
+        'Magnitude',
+        'Direction',
+        'Legacy Identifier'
+      ];
+
+      // Create CSV rows
+      const csvRows = data.map(item => {
+        const temp = item.temperature !== undefined && item.temperature !== null
+          ? item.temperature + (item.temperature_varies ? ' (varies)' : '')
+          : '';
+        const ionicStrength = item.ionic_strength !== undefined && item.ionic_strength !== null
+          ? item.ionic_strength
+          : '';
+        
+        return [
+          this.escapeCSV(item.expression_string || ''),
+          this.escapeCSV(item.constant_kind || ''),
+          this.escapeCSV(temp),
+          this.escapeCSV(ionicStrength),
+          this.escapeCSV(item.value !== undefined ? item.value.toString() : ''),
+          this.escapeCSV(item.magnitude !== undefined ? item.magnitude.toString() : ''),
+          this.escapeCSV(item.direction || ''),
+          this.escapeCSV(item.legacy_identifier || '')
+        ].join(',');
+      });
+
+      // Combine header and rows
+      const csvContent = [csvHeaders.join(','), ...csvRows].join('\n');
+      
+      // Create download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      const ligandName = this.selectedSearchResult?.name?.replace(/[^a-z0-9]/gi, '_') || 'constants';
+      link.setAttribute('download', `wrascal_constants_${ligandName}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+    exportConstantsToJSON() {
+      const data = this.sortedConstants;
+      if (data.length === 0) {
+        alert('No constants data to export');
+        return;
+      }
+
+      // Convert to plain objects for JSON export
+      const jsonData = data.map(item => ({
+        expression_string: item.expression_string || '',
+        constant_kind: item.constant_kind || '',
+        temperature: item.temperature,
+        temperature_varies: item.temperature_varies || false,
+        ionic_strength: item.ionic_strength,
+        value: item.value,
+        magnitude: item.magnitude,
+        direction: item.direction || '',
+        legacy_identifier: item.legacy_identifier || ''
+      }));
+
+      const jsonContent = JSON.stringify(jsonData, null, 2);
+      const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      const ligandName = this.selectedSearchResult?.name?.replace(/[^a-z0-9]/gi, '_') || 'constants';
+      link.setAttribute('download', `wrascal_constants_${ligandName}_${new Date().toISOString().split('T')[0]}.json`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    },
+    escapeCSV(value: any): string {
+      if (value === null || value === undefined) return '';
+      const stringValue = String(value);
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
     },
     changeUnbalancedDataState() {
       this.showUnbalancedData = !this.showUnbalancedData;
